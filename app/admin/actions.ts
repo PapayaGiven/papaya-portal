@@ -35,9 +35,10 @@ export async function updateCreatorGMV(id: string, gmv: number): Promise<{ error
   const supabase = createAdminClient()
 
   let newLevel: CreatorLevel = 'Initiation'
-  if (gmv >= 5000) newLevel = 'Elite'
-  else if (gmv >= 1000) newLevel = 'Pro'
-  else if (gmv >= 300) newLevel = 'Rising'
+  if (gmv >= 10000) newLevel = 'Elite'
+  else if (gmv >= 5000) newLevel = 'Scale'
+  else if (gmv >= 1000) newLevel = 'Growth'
+  else if (gmv >= 300) newLevel = 'Foundation'
 
   const newTarget = LEVEL_CONFIG[newLevel].target ?? 5000
 

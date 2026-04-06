@@ -22,7 +22,7 @@ const REWARDS: Record<CreatorLevel, { color: string; gmvRange: string; emoji: st
       { emoji: '📩', title: 'Newsletter semanal', description: 'Tips, tendencias y nuevos productos directo a tu inbox.' },
     ],
   },
-  Rising: {
+  Foundation: {
     color: '#F4A7C3',
     gmvRange: '$300 – $999',
     emoji: '🌸',
@@ -30,18 +30,29 @@ const REWARDS: Record<CreatorLevel, { color: string; gmvRange: string; emoji: st
       { emoji: '🎁', title: 'Kit de creadora Papaya', description: 'Kit exclusivo: stickers, libreta, tote bag.' },
       { emoji: '💰', title: 'Bono mensual de $25', description: '$25 extra en tus pagos cada mes.' },
       { emoji: '📢', title: 'Primera notificación de deals', description: 'Sé la primera en enterarte de nuevas campañas.' },
-      { emoji: '🏅', title: 'Badge de $300 GMV', description: 'Badge oficial de Rising para tu perfil.' },
+      { emoji: '🏅', title: 'Badge de $300 GMV', description: 'Badge oficial de Foundation para tu perfil.' },
     ],
   },
-  Pro: {
+  Growth: {
     color: '#1B5E3B',
-    gmvRange: '$1,000 – $9,999',
+    gmvRange: '$1,000 – $4,999',
     emoji: '💚',
     rewards: [
       { emoji: '💸', title: 'Bono trimestral de $100', description: '$100 de bono cada tres meses.' },
       { emoji: '📸', title: 'Sesión de fotos y video', description: 'Sesión profesional de contenido con el equipo Papaya.' },
       { emoji: '🌐', title: 'Destacada en el portafolio de la agencia', description: 'Apareces en el sitio web de Papaya como creadora.' },
       { emoji: '📞', title: 'Llamadas de estrategia 1:1', description: 'Sesión mensual de estrategia con tu manager dedicado.' },
+    ],
+  },
+  Scale: {
+    color: '#8B5CF6',
+    gmvRange: '$5,000 – $9,999',
+    emoji: '🚀',
+    rewards: [
+      { emoji: '⚡', title: 'Herramientas avanzadas', description: 'Acceso a herramientas y recursos avanzados para escalar.' },
+      { emoji: '💸', title: 'Bono trimestral mejorado', description: 'Bono trimestral mejorado como creadora Scale.' },
+      { emoji: '🎯', title: 'Soporte dedicado', description: 'Soporte personalizado para tu crecimiento.' },
+      { emoji: '🏅', title: 'Badge de $5,000 GMV', description: 'Badge oficial de Scale para tu perfil.' },
     ],
   },
   Elite: {
@@ -57,7 +68,7 @@ const REWARDS: Record<CreatorLevel, { color: string; gmvRange: string; emoji: st
   },
 }
 
-const LEVELS: CreatorLevel[] = ['Initiation', 'Rising', 'Pro', 'Elite']
+const LEVELS: CreatorLevel[] = ['Initiation', 'Foundation', 'Growth', 'Scale', 'Elite']
 
 export default async function RewardsPage() {
   const supabase = await createClient()

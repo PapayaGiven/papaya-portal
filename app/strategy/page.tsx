@@ -276,7 +276,7 @@ export default async function StrategyPage() {
                   {!showHashtags && (sp.hashtags?.length ?? 0) > 0 && (
                     <div className="px-6 py-3 bg-gray-50/50 border-t border-gray-50">
                       <p className="font-dm-sans text-xs text-gray-400">
-                        🔒 Hashtags y videos de ejemplo se desbloquean en <strong>Pro</strong>.
+                        🔒 Hashtags y videos de ejemplo se desbloquean en <strong>Growth</strong>.
                       </p>
                     </div>
                   )}

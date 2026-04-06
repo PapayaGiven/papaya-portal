@@ -48,7 +48,7 @@ export default async function CampaignsPage() {
           <div>
             <h1 className="font-playfair text-4xl text-brand-black mb-1">Campañas</h1>
             <p className="font-dm-sans text-gray-500 text-sm">
-              {unlocked ? `${campaigns.length} campañas activas` : 'Desbloquea campañas en el nivel Rising'}
+              {unlocked ? `${campaigns.length} campañas activas` : 'Desbloquea campañas en el nivel Foundation'}
             </p>
           </div>
         </div>
@@ -68,7 +68,7 @@ export default async function CampaignsPage() {
             </div>
           )
         ) : (
-          <LockedSection unlockAt="Rising">
+          <LockedSection unlockAt="Foundation">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {previewCampaigns.map((campaign) => (
                 <CampaignCard key={campaign.id} campaign={campaign} />

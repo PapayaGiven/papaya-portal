@@ -49,11 +49,12 @@ interface AdminPanelProps {
   initiationSelections: InitiationSelectionRow[]
 }
 
-const LEVELS: CreatorLevel[] = ['Initiation', 'Rising', 'Pro', 'Elite']
+const LEVELS: CreatorLevel[] = ['Initiation', 'Foundation', 'Growth', 'Scale', 'Elite']
 const LEVEL_COLORS: Record<CreatorLevel, string> = {
   Initiation: 'bg-gray-100 text-gray-600',
-  Rising: 'bg-pink-100 text-pink-700',
-  Pro: 'bg-emerald-100 text-emerald-700',
+  Foundation: 'bg-pink-100 text-pink-700',
+  Growth: 'bg-emerald-100 text-emerald-700',
+  Scale: 'bg-purple-100 text-purple-700',
   Elite: 'bg-amber-100 text-amber-700',
 }
 

@@ -18,8 +18,8 @@ const LEVEL_PERKS: Record<CreatorLevel, { title: string; gmvRange: string; perks
       'Acceso al dashboard',
     ],
   },
-  Rising: {
-    title: 'Rising',
+  Foundation: {
+    title: 'Foundation',
     gmvRange: '$300 – $999',
     emoji: '🌸',
     color: '#F4A7C3',
@@ -32,18 +32,32 @@ const LEVEL_PERKS: Record<CreatorLevel, { title: string; gmvRange: string; perks
       'Briefing mensual de creadoras',
     ],
   },
-  Pro: {
-    title: 'Pro',
-    gmvRange: '$1,000 – $9,999',
+  Growth: {
+    title: 'Growth',
+    gmvRange: '$1,000 – $4,999',
     emoji: '💚',
     color: '#1B5E3B',
     perks: [
-      'Todo lo de Rising',
-      'Campañas premium (exclusivas Pro+)',
+      'Todo lo de Foundation',
+      'Campañas premium (exclusivas Growth+)',
       'Manager de creadoras dedicado',
       'Llamadas de estrategia 1:1 (mensuales)',
       'Badge de $1,000 GMV',
       'Bono trimestral',
+    ],
+  },
+  Scale: {
+    title: 'Scale',
+    gmvRange: '$5,000 – $9,999',
+    emoji: '🚀',
+    color: '#8B5CF6',
+    perks: [
+      'Todo lo de Growth',
+      'Herramientas avanzadas y soporte dedicado',
+      'Campañas exclusivas Scale+',
+      'Badge de $5,000 GMV',
+      'Bono trimestral mejorado',
+      'Acceso anticipado a nuevos productos',
     ],
   },
   Elite: {
@@ -52,17 +66,17 @@ const LEVEL_PERKS: Record<CreatorLevel, { title: string; gmvRange: string; perks
     emoji: '👑',
     color: '#F59E0B',
     perks: [
-      'Todo lo de Pro',
+      'Todo lo de Scale',
       'Todas las campañas y comisiones más altas',
-      'Acceso anticipado a nuevos productos',
       'Deals co-branded y partnership con la agencia',
       'Badge de $10,000 GMV',
       'Invitaciones a eventos y viajes',
+      'Bono trimestral de $500',
     ],
   },
 }
 
-const LEVELS: CreatorLevel[] = ['Initiation', 'Rising', 'Pro', 'Elite']
+const LEVELS: CreatorLevel[] = ['Initiation', 'Foundation', 'Growth', 'Scale', 'Elite']
 
 function getLevelIndex(level: CreatorLevel): number {
   return LEVELS.indexOf(level)
@@ -98,7 +112,7 @@ export default async function ProgressPage() {
           <div>
             <h1 className="font-playfair text-4xl text-brand-black mb-1">Tu camino.</h1>
             <p className="font-dm-sans text-gray-500 text-sm">
-              Cuatro niveles, una misión. Mira dónde estás y qué viene después.
+              Cinco niveles, una misión. Mira dónde estás y qué viene después.
             </p>
           </div>
         </div>

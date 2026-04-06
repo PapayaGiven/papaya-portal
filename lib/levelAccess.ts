@@ -9,15 +9,15 @@ export function canSeeLeaderboard(level: CreatorLevel): boolean {
 }
 
 export function canSeeHashtags(level: CreatorLevel): boolean {
-  return level === 'Pro' || level === 'Elite'
+  return level === 'Growth' || level === 'Scale' || level === 'Elite'
 }
 
 export function canSeeExampleVideos(level: CreatorLevel): boolean {
-  return level === 'Pro' || level === 'Elite'
+  return level === 'Growth' || level === 'Scale' || level === 'Elite'
 }
 
 export function hasAccountManager(level: CreatorLevel): boolean {
-  return level === 'Pro' || level === 'Elite'
+  return level === 'Growth' || level === 'Scale' || level === 'Elite'
 }
 
 export function hasEliteFeatures(level: CreatorLevel): boolean {
@@ -46,7 +46,7 @@ export function getNavLinks(level: CreatorLevel | null): { href: string; label: 
   ]
 }
 
-export const LEVEL_ORDER: CreatorLevel[] = ['Initiation', 'Rising', 'Pro', 'Elite']
+export const LEVEL_ORDER: CreatorLevel[] = ['Initiation', 'Foundation', 'Growth', 'Scale', 'Elite']
 
 export function getLevelIndex(level: CreatorLevel): number {
   return LEVEL_ORDER.indexOf(level)
