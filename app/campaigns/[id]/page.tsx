@@ -72,19 +72,19 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
               <p className="font-playfair text-2xl font-bold text-brand-pink">
                 {campaign.commission_rate}%
               </p>
-              <p className="font-dm-sans text-xs text-gray-400 mt-0.5">Comisión</p>
+              <p className="font-dm-sans text-xs text-gray-400 mt-0.5">Provision</p>
             </div>
             <div className="px-6 py-5 text-center">
               <p className="font-playfair text-2xl font-bold text-brand-black">
                 {campaign.spots_left ?? '∞'}
               </p>
-              <p className="font-dm-sans text-xs text-gray-400 mt-0.5">Lugares disponibles</p>
+              <p className="font-dm-sans text-xs text-gray-400 mt-0.5">Plätze verfügbar</p>
             </div>
             <div className="px-6 py-5 text-center">
               <p className="font-playfair text-2xl font-bold text-brand-green">
                 {campaign.budget ? `$${campaign.budget.toLocaleString('en-US')}` : '–'}
               </p>
-              <p className="font-dm-sans text-xs text-gray-400 mt-0.5">Presupuesto</p>
+              <p className="font-dm-sans text-xs text-gray-400 mt-0.5">Budget</p>
             </div>
             <div className="px-6 py-5 text-center">
               <span
@@ -93,7 +93,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
               >
                 {campaign.min_level}+
               </span>
-              <p className="font-dm-sans text-xs text-gray-400 mt-1">Nivel mín.</p>
+              <p className="font-dm-sans text-xs text-gray-400 mt-1">Min. Level</p>
             </div>
           </div>
 
@@ -123,7 +123,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
               className="flex-1 text-center py-3.5 rounded-xl font-dm-sans font-semibold text-sm text-white transition hover:opacity-90"
               style={{ backgroundColor: '#1B5E3B' }}
             >
-              Agregar al showcase →
+              Zum Showcase hinzufügen →
             </a>
           )}
           {campaign.sample_available && (
@@ -131,16 +131,16 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
               href={`mailto:team@papayasocialclub.com?subject=Sample request: ${encodeURIComponent(campaign.brand_name)}`}
               className="flex-1 text-center py-3.5 rounded-xl font-dm-sans font-semibold text-sm text-brand-green border-2 border-brand-green hover:bg-brand-green/5 transition"
             >
-              Solicitar muestra
+              Muster anfragen
             </a>
           )}
         </div>
 
         {/* Interest form */}
         <div className="bg-white rounded-3xl border border-brand-pink/20 shadow-sm p-8">
-          <h2 className="font-playfair text-2xl text-brand-black mb-1">¡Me interesa!</h2>
+          <h2 className="font-playfair text-2xl text-brand-black mb-1">Ich bin interessiert!</h2>
           <p className="font-dm-sans text-sm text-gray-500 mb-6">
-            Cuéntanos tu propuesta — te responderemos pronto.
+            Erzähle uns dein Angebot — wir melden uns bald bei dir.
           </p>
           <ApplicationForm campaignId={campaign.id} />
         </div>

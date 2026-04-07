@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Creator, Campaign, Product, LEVEL_CONFIG, StrategyProduct } from '@/lib/types'
+import { Creator, Campaign, Product, LEVEL_CONFIG, StrategyProduct, Announcement, SiteSettings } from '@/lib/types'
 import Nav from '@/components/Nav'
 import SmartBanner from '@/components/SmartBanner'
 import GMVRing from '@/components/GMVRing'
@@ -12,6 +12,8 @@ import ProductCard from '@/components/ProductCard'
 import ProductRequestButton from '@/components/ProductRequestButton'
 import LevelUpCelebration from '@/components/LevelUpCelebration'
 import InitiationProductModal from '@/components/InitiationProductModal'
+import PersonalGoalNotes from '@/components/PersonalGoalNotes'
+import DashboardAnnouncements from '@/components/DashboardAnnouncements'
 import { canSeeCampaigns, hasAccountManager, hasEliteFeatures } from '@/lib/levelAccess'
 
 function computeBanner(
@@ -29,8 +31,8 @@ function computeBanner(
   if (urgentCampaign) {
     return {
       type: 'urgent',
-      title: '¡Campaña por terminar!',
-      message: `${urgentCampaign.brand_name} cierra en menos de 24 horas. ¡Aplica ahora!`,
+      title: 'Kampagne endet bald!',
+      message: `${urgentCampaign.brand_name} endet in weniger als 24 Stunden. Jetzt bewerben!`,
     }
   }
 
@@ -40,8 +42,8 @@ function computeBanner(
   if (highCommProduct) {
     return {
       type: 'products',
-      title: '¡Producto top disponible!',
-      message: `${highCommProduct.name} ofrece ${highCommProduct.commission_rate}% de comisión. ¡Empieza a promover!`,
+      title: 'Top Produkt verfügbar!',
+      message: `${highCommProduct.name} bietet ${highCommProduct.commission_rate}% Provision. Jetzt starten!`,
     }
   }
 
@@ -50,8 +52,8 @@ function computeBanner(
     const config = LEVEL_CONFIG[creator.level]
     return {
       type: 'gmv',
-      title: '¡Casi llegas!',
-      message: `Solo $${remaining.toFixed(0)} más para llegar a ${config.next ?? 'Elite'}. ¡Sigue así!`,
+      title: 'Fast geschafft!',
+      message: `Nur noch $${remaining.toFixed(0)} bis ${config.next ?? 'Elite'}. Weiter so!`,
     }
   }
 
@@ -74,7 +76,7 @@ export default async function DashboardPage() {
   const level = creator?.level ?? 'Initiation'
   const isInitiation = level === 'Initiation'
 
-  // Fetch active campaigns (only for Foundation+)
+  // Fetch active campaigns (only for Rising+)
   let campaigns: Campaign[] = []
   if (creator && canSeeCampaigns(level)) {
     const { data: campaignsData } = await supabase
@@ -92,14 +94,12 @@ export default async function DashboardPage() {
   let showInitiationModal = false
 
   if (creator && isInitiation) {
-    // Check if they've selected products
     const { data: selections } = await supabase
       .from('creator_initiation_products')
       .select('product_id')
       .eq('creator_id', creator.id)
 
     if (!selections || selections.length === 0) {
-      // Show modal
       showInitiationModal = true
       const { data: approved } = await admin
         .from('products')
@@ -124,7 +124,7 @@ export default async function DashboardPage() {
   // Strategy recap
   const now = new Date()
   const monthDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-  const monthLabel = now.toLocaleDateString('es-US', { month: 'long', year: 'numeric' })
+  const monthLabel = now.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
   let strategyProducts: StrategyProduct[] = []
 
   if (creator) {
@@ -154,11 +154,36 @@ export default async function DashboardPage() {
     })
     .slice(0, 2)
 
+  // Fetch announcements
+  let announcements: Announcement[] = []
+  {
+    const { data: announcementsData } = await admin
+      .from('announcements')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+    announcements = (announcementsData ?? []) as Announcement[]
+  }
+
+  // Fetch settings
+  let settings: SiteSettings | null = null
+  {
+    const { data: settingsData } = await admin
+      .from('site_settings')
+      .select('*')
+      .single()
+    settings = settingsData as SiteSettings | null
+  }
+
   const banner = creator ? computeBanner(creator, campaigns, products) : null
   const levelConfig = creator ? LEVEL_CONFIG[creator.level] : null
   const personalGoal = creator?.personal_gmv_goal ?? 0
   const personalProgress = personalGoal > 0 ? Math.min((creator?.gmv ?? 0) / personalGoal, 1) : 0
   const firstName = creator?.name?.split(' ')[0] ?? null
+
+  // Determine booking link for this creator
+  const bookingLink = creator?.booking_link
+    ?? (level === 'Elite' ? settings?.booking_link_elite : level === 'Pro' ? settings?.booking_link_pro : null)
 
   return (
     <div className="min-h-screen bg-brand-light-pink">
@@ -177,6 +202,11 @@ export default async function DashboardPage() {
         />
       )}
 
+      {/* Announcements */}
+      {announcements.length > 0 && (
+        <DashboardAnnouncements announcements={announcements} />
+      )}
+
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Greeting row */}
         <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -190,10 +220,10 @@ export default async function DashboardPage() {
           />
           <div>
             <h1 className="font-playfair text-3xl text-brand-black">
-              {firstName ? `¡Hola, ${firstName}!` : '¡Bienvenida de nuevo!'}
+              {firstName ? `Hallo, ${firstName}!` : 'Willkommen zurück!'}
             </h1>
             <p className="font-dm-sans text-sm text-gray-500 mt-1">
-              {now.toLocaleDateString('es-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {now.toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
 
@@ -221,8 +251,8 @@ export default async function DashboardPage() {
         {!creator && (
           <div className="bg-white rounded-2xl border border-brand-pink/20 p-8 text-center mb-6">
             <p className="text-4xl mb-3">🌴</p>
-            <h2 className="font-playfair text-2xl text-brand-black mb-2">Tu perfil se está configurando.</h2>
-            <p className="font-dm-sans text-gray-500 text-sm">Tu agencia activará tu perfil de creadora pronto.</p>
+            <h2 className="font-playfair text-2xl text-brand-black mb-2">Dein Profil wird eingerichtet.</h2>
+            <p className="font-dm-sans text-gray-500 text-sm">Deine Agentur wird dein Creator-Profil bald aktivieren.</p>
           </div>
         )}
 
@@ -234,7 +264,7 @@ export default async function DashboardPage() {
               <div className="sm:col-span-1 bg-white rounded-2xl border border-brand-pink/20 p-5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-gray-400">Mi Estrategia</h3>
+                    <h3 className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-gray-400">Meine Strategie</h3>
                     <span className="font-dm-sans text-xs text-gray-400">{monthLabel}</span>
                   </div>
                   {strategyProducts.length > 0 ? (
@@ -250,16 +280,16 @@ export default async function DashboardPage() {
                       })}
                       {totalVideosPerDay > 0 && (
                         <p className="font-dm-sans text-xs text-gray-400 mt-2">
-                          {totalVideosPerDay} videos/día en total
+                          {totalVideosPerDay} Videos/Tag insgesamt
                         </p>
                       )}
                     </div>
                   ) : (
-                    <p className="font-dm-sans text-sm text-gray-400">Aún no hay estrategia para este mes.</p>
+                    <p className="font-dm-sans text-sm text-gray-400">Noch keine Strategie für diesen Monat.</p>
                   )}
                 </div>
                 <Link href="/strategy" className="mt-4 font-dm-sans text-xs font-semibold text-brand-green hover:underline">
-                  Ver estrategia completa →
+                  Vollständige Strategie ansehen →
                 </Link>
               </div>
 
@@ -276,11 +306,11 @@ export default async function DashboardPage() {
                       <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                     </svg>
                   </div>
-                  <h3 className="font-dm-sans font-semibold text-sm text-brand-black mb-1">Comunidad</h3>
-                  <p className="font-dm-sans text-xs text-gray-500">Grupo de WhatsApp para creadoras Papaya</p>
+                  <h3 className="font-dm-sans font-semibold text-sm text-brand-black mb-1">Community</h3>
+                  <p className="font-dm-sans text-xs text-gray-500">WhatsApp Gruppe für Papaya Creators</p>
                 </div>
                 <span className="mt-3 font-dm-sans text-xs font-semibold text-brand-pink group-hover:underline">
-                  Unirse al grupo →
+                  Gruppe beitreten →
                 </span>
               </a>
 
@@ -297,13 +327,43 @@ export default async function DashboardPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
                   </div>
-                  <h3 className="font-dm-sans font-semibold text-sm text-brand-black mb-1">Educación</h3>
-                  <p className="font-dm-sans text-xs text-gray-500">Entrenamientos y recursos para triunfar en TikTok</p>
+                  <h3 className="font-dm-sans font-semibold text-sm text-brand-black mb-1">Bildung</h3>
+                  <p className="font-dm-sans text-xs text-gray-500">Trainings und Ressourcen für TikTok Erfolg</p>
                 </div>
                 <span className="mt-3 font-dm-sans text-xs font-semibold text-brand-green group-hover:underline">
-                  Ver cursos →
+                  Kurse ansehen →
                 </span>
               </a>
+            </div>
+
+            {/* 1:1 Booking Card */}
+            <div className="mb-6">
+              <div className={`bg-white rounded-2xl border p-5 ${(level === 'Pro' || level === 'Elite') ? 'border-brand-green/20' : 'border-gray-100'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${(level === 'Pro' || level === 'Elite') ? 'bg-brand-green/10' : 'bg-gray-100'}`}>
+                    📞
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-dm-sans font-semibold text-sm text-brand-black">Dein 1:1 Call buchen</h3>
+                    {(level === 'Initiation' || level === 'Rising') ? (
+                      <p className="font-dm-sans text-xs text-gray-400 flex items-center gap-1">
+                        🔒 Verfügbar ab Pro Level
+                      </p>
+                    ) : bookingLink ? (
+                      <a
+                        href={bookingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-dm-sans text-xs font-semibold text-brand-green hover:underline"
+                      >
+                        Call buchen →
+                      </a>
+                    ) : (
+                      <p className="font-dm-sans text-xs text-gray-400">Dein Buchungslink wird bald verfügbar sein</p>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* GMV Ring + Personal Goal / Account Manager / Elite */}
@@ -322,7 +382,7 @@ export default async function DashboardPage() {
                     <div className="bg-white rounded-2xl border border-amber-200/60 p-5 flex items-center gap-4">
                       <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-2xl shrink-0">👑</div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-amber-600 mb-0.5">Tu Account Manager</p>
+                        <p className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-amber-600 mb-0.5">Dein Account Manager</p>
                         <p className="font-dm-sans font-semibold text-brand-black">{creator.account_manager_name}</p>
                         {creator.account_manager_whatsapp && (
                           <a
@@ -334,7 +394,7 @@ export default async function DashboardPage() {
                             <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                             </svg>
-                            Escribe por WhatsApp
+                            Per WhatsApp schreiben
                           </a>
                         )}
                       </div>
@@ -343,9 +403,9 @@ export default async function DashboardPage() {
 
                   {creator.mastermind_date && (
                     <div className="bg-white rounded-2xl border border-amber-200/60 p-5">
-                      <p className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-amber-600 mb-1">Próximo Mastermind</p>
+                      <p className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-amber-600 mb-1">Nächstes Mastermind</p>
                       <p className="font-playfair text-xl text-brand-black">
-                        {new Date(creator.mastermind_date).toLocaleDateString('es-US', {
+                        {new Date(creator.mastermind_date).toLocaleDateString('de-DE', {
                           weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
                         })}
                       </p>
@@ -353,10 +413,10 @@ export default async function DashboardPage() {
                   )}
                 </div>
               ) : hasAccountManager(level) ? (
-                /* Growth+: Account Manager card */
+                /* Pro+: Account Manager card */
                 <div className="bg-white rounded-2xl border border-brand-green/20 p-6 flex flex-col gap-4">
                   <div>
-                    <p className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-brand-green mb-1">Tu Account Manager</p>
+                    <p className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-brand-green mb-1">Dein Account Manager</p>
                     {creator.account_manager_name ? (
                       <>
                         <p className="font-playfair text-2xl text-brand-black">{creator.account_manager_name}</p>
@@ -370,24 +430,24 @@ export default async function DashboardPage() {
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                             </svg>
-                            Message on WhatsApp
+                            Per WhatsApp schreiben
                           </a>
                         )}
                       </>
                     ) : (
-                      <p className="font-dm-sans text-sm text-gray-400">Tu manager será asignado pronto.</p>
+                      <p className="font-dm-sans text-sm text-gray-400">Dein Manager wird bald zugewiesen.</p>
                     )}
                   </div>
                   <div className="mt-auto pt-3 border-t border-gray-50">
-                    <p className="font-dm-sans text-xs text-gray-400">Beneficio Growth: llamadas de estrategia 1:1 mensuales incluidas.</p>
+                    <p className="font-dm-sans text-xs text-gray-400">Pro-Vorteil: monatliche 1:1 Strategie-Calls inklusive.</p>
                   </div>
                 </div>
               ) : (
-                /* Initiation / Foundation: Personal Goal Card */
+                /* Initiation / Rising: Personal Goal Card */
                 <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-4">
                   <div className="flex flex-col items-center gap-1">
-                    <h3 className="font-dm-sans font-semibold text-gray-500 text-xs uppercase tracking-wider">Mi meta personal</h3>
-                    <span className="font-dm-sans text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">Meta autoestablecida</span>
+                    <h3 className="font-dm-sans font-semibold text-gray-500 text-xs uppercase tracking-wider">Mein persönliches Ziel</h3>
+                    <span className="font-dm-sans text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">Selbst gesetztes Ziel</span>
                   </div>
 
                   {personalGoal > 0 ? (
@@ -413,20 +473,20 @@ export default async function DashboardPage() {
                             ${creator.gmv.toLocaleString('en-US')}
                           </span>
                           <span className="font-dm-sans text-xs text-gray-400 mt-1">
-                            of ${personalGoal.toLocaleString('en-US')}
+                            von ${personalGoal.toLocaleString('en-US')}
                           </span>
                         </div>
                       </div>
                       <div className="text-center">
                         <p className="font-dm-sans text-sm text-gray-600">
                           {personalProgress >= 1 ? (
-                            <span className="font-semibold text-brand-green">🎯 ¡Meta personal alcanzada!</span>
+                            <span className="font-semibold text-brand-green">🎯 Persönliches Ziel erreicht!</span>
                           ) : (
                             <>
                               <span className="font-semibold text-brand-green">
                                 ${Math.max(personalGoal - creator.gmv, 0).toLocaleString('en-US')}
                               </span>{' '}
-                              más para alcanzar tu meta
+                              mehr um dein Ziel zu erreichen
                             </>
                           )}
                         </p>
@@ -437,28 +497,31 @@ export default async function DashboardPage() {
                           />
                         </div>
                         <p className="text-xs text-gray-400 font-dm-sans mt-1">
-                          {Math.round(personalProgress * 100)}% de tu meta personal
+                          {Math.round(personalProgress * 100)}% deines persönlichen Ziels
                         </p>
                       </div>
                     </>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
                       <p className="text-4xl mb-3">🎯</p>
-                      <p className="font-dm-sans text-sm text-gray-500 mb-1">Aún no tienes una meta personal.</p>
-                      <p className="font-dm-sans text-xs text-gray-400">Pídele a tu agencia que establezca una meta de GMV para ti.</p>
+                      <p className="font-dm-sans text-sm text-gray-500 mb-1">Du hast noch kein persönliches Ziel.</p>
+                      <p className="font-dm-sans text-xs text-gray-400">Bitte deine Agentur, ein GMV-Ziel für dich festzulegen.</p>
                     </div>
                   )}
+
+                  {/* Personal Goal Notes */}
+                  <PersonalGoalNotes initialNotes={creator.personal_goal_notes} />
                 </div>
               )}
             </div>
 
-            {/* Campaigns (Foundation+ only) */}
+            {/* Campaigns (Rising+ only) */}
             {canSeeCampaigns(level) && campaigns.length > 0 && (
               <section className="mb-8">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-playfair text-2xl text-brand-black">Campañas activas</h2>
+                  <h2 className="font-playfair text-2xl text-brand-black">Aktive Kampagnen</h2>
                   <Link href="/campaigns" className="font-dm-sans text-sm text-brand-green hover:underline">
-                    Ver todas →
+                    Alle ansehen →
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -474,11 +537,11 @@ export default async function DashboardPage() {
               <section>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-playfair text-2xl text-brand-black">
-                    {isInitiation ? 'Tus productos' : 'Productos top'}
+                    {isInitiation ? 'Deine Produkte' : 'Top Produkte'}
                   </h2>
                   <div className="flex items-center gap-3">
                     <Link href="/products" className="font-dm-sans text-sm text-brand-green hover:underline">
-                      {isInitiation ? 'Gestionar productos →' : 'Todos los productos →'}
+                      {isInitiation ? 'Produkte verwalten →' : 'Alle Produkte →'}
                     </Link>
                     <ProductRequestButton />
                   </div>

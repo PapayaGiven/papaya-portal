@@ -46,9 +46,9 @@ export default async function CampaignsPage() {
             height={48}
           />
           <div>
-            <h1 className="font-playfair text-4xl text-brand-black mb-1">Campañas</h1>
+            <h1 className="font-playfair text-4xl text-brand-black mb-1">Kampagnen</h1>
             <p className="font-dm-sans text-gray-500 text-sm">
-              {unlocked ? `${campaigns.length} campañas activas` : 'Desbloquea campañas en el nivel Foundation'}
+              {unlocked ? `${campaigns.length} aktive Kampagnen` : 'Kampagnen werden ab Rising freigeschaltet'}
             </p>
           </div>
         </div>
@@ -57,8 +57,8 @@ export default async function CampaignsPage() {
           campaigns.length === 0 ? (
             <div className="bg-white rounded-2xl border border-brand-pink/20 p-10 text-center">
               <p className="text-4xl mb-3">📢</p>
-              <h2 className="font-playfair text-2xl text-brand-black mb-2">No hay campañas activas en este momento.</h2>
-              <p className="font-dm-sans text-gray-500 text-sm">Vuelve pronto — se agregan campañas nuevas regularmente.</p>
+              <h2 className="font-playfair text-2xl text-brand-black mb-2">Aktuell keine aktiven Kampagnen.</h2>
+              <p className="font-dm-sans text-gray-500 text-sm">Komm bald wieder - neue Kampagnen werden regelmäßig hinzugefügt.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -68,14 +68,14 @@ export default async function CampaignsPage() {
             </div>
           )
         ) : (
-          <LockedSection unlockAt="Foundation">
+          <LockedSection unlockAt="Rising">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {previewCampaigns.map((campaign) => (
                 <CampaignCard key={campaign.id} campaign={campaign} />
               ))}
               {previewCampaigns.length === 0 && (
                 <div className="col-span-3 bg-white rounded-2xl p-8 text-center">
-                  <p className="font-dm-sans text-gray-400">Las campañas aparecerán aquí cuando se desbloqueen.</p>
+                  <p className="font-dm-sans text-gray-400">Kampagnen erscheinen hier, sobald sie freigeschaltet sind.</p>
                 </div>
               )}
             </div>

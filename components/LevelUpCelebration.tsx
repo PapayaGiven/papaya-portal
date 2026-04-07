@@ -46,9 +46,9 @@ export default function LevelUpCelebration({ creatorId, currentLevel }: LevelUpC
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="bg-white rounded-3xl border border-brand-pink/20 shadow-2xl p-10 max-w-sm w-full text-center">
         <div className="text-6xl mb-4">{config.emoji}</div>
-        <h2 className="font-playfair text-3xl text-brand-black mb-2">¡Subiste de nivel!</h2>
+        <h2 className="font-playfair text-3xl text-brand-black mb-2">Level aufgestiegen!</h2>
         <p className="font-dm-sans text-gray-500 text-sm mb-4">
-          Has alcanzado
+          Du hast erreicht
         </p>
         <span
           className="inline-block font-dm-sans font-bold text-lg px-5 py-2 rounded-full text-white mb-6"
@@ -62,7 +62,7 @@ export default function LevelUpCelebration({ creatorId, currentLevel }: LevelUpC
           className="w-full py-3 rounded-xl font-dm-sans font-semibold text-sm text-white transition hover:opacity-90"
           style={{ backgroundColor: '#1B5E3B' }}
         >
-          ¡Vamos! →
+          Los geht&apos;s! →
         </button>
       </div>
     </div>
@@ -70,9 +70,8 @@ export default function LevelUpCelebration({ creatorId, currentLevel }: LevelUpC
 }
 
 const LEVEL_CONFIG_DISPLAY: Record<CreatorLevel, { emoji: string; color: string; message: string }> = {
-  Initiation: { emoji: '��', color: '#9CA3AF', message: '¡Bienvenida a Papaya Social Club! Tu camino comienza aquí.' },
-  Foundation: { emoji: '🌸', color: '#F4A7C3', message: '¡Desbloqueaste campañas, el ranking y beneficios exclusivos!' },
-  Growth: { emoji: '💚', color: '#1B5E3B', message: '¡Estás en Growth! Llamadas de estrategia, sesiones de fotos y más te esperan.' },
-  Scale: { emoji: '🚀', color: '#8B5CF6', message: '¡Nivel Scale alcanzado! Es hora de escalar tu negocio con herramientas avanzadas y soporte dedicado.' },
-  Elite: { emoji: '👑', color: '#F59E0B', message: '¡Llegaste al nivel más alto! Partnership con la agencia y bonos trimestrales de $500.' },
+  Initiation: { emoji: '🌱', color: '#9CA3AF', message: 'Willkommen bei Papaya Social Club!' },
+  Rising: { emoji: '🌸', color: '#F4A7C3', message: 'Kampagnen und Ranking freigeschaltet!' },
+  Pro: { emoji: '💚', color: '#1B5E3B', message: '1:1 Calls und Account Manager!' },
+  Elite: { emoji: '👑', color: '#F59E0B', message: 'Partnerschaft und Premium-Boni!' },
 }

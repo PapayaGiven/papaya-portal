@@ -16,59 +16,48 @@ const REWARDS: Record<CreatorLevel, { color: string; gmvRange: string; emoji: st
     gmvRange: '$0 – $299',
     emoji: '🌱',
     rewards: [
-      { emoji: '📦', title: 'Paquete de bienvenida', description: 'Tu kit de inicio Papaya con todo lo que necesitas.' },
-      { emoji: '💬', title: 'Acceso a la comunidad', description: 'Acceso a la comunidad exclusiva de creadoras.' },
-      { emoji: '📊', title: 'Dashboard de creadora', description: 'Tu dashboard personal para seguir tu progreso.' },
-      { emoji: '📩', title: 'Newsletter semanal', description: 'Tips, tendencias y nuevos productos directo a tu inbox.' },
+      { emoji: '📦', title: 'Willkommenspaket', description: 'Dein Papaya Starter-Kit mit allem was du brauchst.' },
+      { emoji: '💬', title: 'Community Zugang', description: 'Zugang zur exklusiven Creator Community.' },
+      { emoji: '📊', title: 'Creator Dashboard', description: 'Dein persönliches Dashboard um deinen Fortschritt zu verfolgen.' },
+      { emoji: '📩', title: 'Wöchentlicher Newsletter', description: 'Tipps, Trends und neue Produkte direkt in dein Postfach.' },
     ],
   },
-  Foundation: {
+  Rising: {
     color: '#F4A7C3',
     gmvRange: '$300 – $999',
     emoji: '🌸',
     rewards: [
-      { emoji: '🎁', title: 'Kit de creadora Papaya', description: 'Kit exclusivo: stickers, libreta, tote bag.' },
-      { emoji: '💰', title: 'Bono mensual de $25', description: '$25 extra en tus pagos cada mes.' },
-      { emoji: '📢', title: 'Primera notificación de deals', description: 'Sé la primera en enterarte de nuevas campañas.' },
-      { emoji: '🏅', title: 'Badge de $300 GMV', description: 'Badge oficial de Foundation para tu perfil.' },
+      { emoji: '🎁', title: 'Papaya Creator Kit', description: 'Exklusives Kit: Sticker, Notizbuch, Tote Bag.' },
+      { emoji: '💰', title: 'Monatlicher Bonus von $25', description: '$25 extra in deinen monatlichen Zahlungen.' },
+      { emoji: '📢', title: 'Erste Benachrichtigung bei Deals', description: 'Erfahre als Erste von neuen Kampagnen.' },
+      { emoji: '🏅', title: '$300 GMV Badge', description: 'Offizielles Rising Badge für dein Profil.' },
     ],
   },
-  Growth: {
+  Pro: {
     color: '#1B5E3B',
-    gmvRange: '$1,000 – $4,999',
+    gmvRange: '$1.000 – $9.999',
     emoji: '💚',
     rewards: [
-      { emoji: '💸', title: 'Bono trimestral de $100', description: '$100 de bono cada tres meses.' },
-      { emoji: '📸', title: 'Sesión de fotos y video', description: 'Sesión profesional de contenido con el equipo Papaya.' },
-      { emoji: '🌐', title: 'Destacada en el portafolio de la agencia', description: 'Apareces en el sitio web de Papaya como creadora.' },
-      { emoji: '📞', title: 'Llamadas de estrategia 1:1', description: 'Sesión mensual de estrategia con tu manager dedicado.' },
-    ],
-  },
-  Scale: {
-    color: '#8B5CF6',
-    gmvRange: '$5,000 – $9,999',
-    emoji: '🚀',
-    rewards: [
-      { emoji: '⚡', title: 'Herramientas avanzadas', description: 'Acceso a herramientas y recursos avanzados para escalar.' },
-      { emoji: '💸', title: 'Bono trimestral mejorado', description: 'Bono trimestral mejorado como creadora Scale.' },
-      { emoji: '🎯', title: 'Soporte dedicado', description: 'Soporte personalizado para tu crecimiento.' },
-      { emoji: '🏅', title: 'Badge de $5,000 GMV', description: 'Badge oficial de Scale para tu perfil.' },
+      { emoji: '💸', title: 'Quartalsbonus von $100', description: '$100 Bonus alle drei Monate.' },
+      { emoji: '📸', title: 'Foto- und Video-Shooting', description: 'Professionelles Content-Shooting mit dem Papaya Team.' },
+      { emoji: '🌐', title: 'Im Agentur-Portfolio vorgestellt', description: 'Du erscheinst auf der Papaya Website als Creator.' },
+      { emoji: '📞', title: '1:1 Strategie-Calls', description: 'Monatliche Strategie-Session mit deinem dedizierten Manager.' },
     ],
   },
   Elite: {
     color: '#F59E0B',
-    gmvRange: '$10,000+',
+    gmvRange: '$10.000+',
     emoji: '👑',
     rewards: [
-      { emoji: '💎', title: 'Bono trimestral de $500', description: '$500 extra cada tres meses como top creadora.' },
-      { emoji: '🤝', title: 'Partnership con la agencia', description: 'Contrato oficial de partner Papaya con términos exclusivos.' },
-      { emoji: '✈️', title: 'Invitaciones a eventos y viajes', description: 'Invitaciones a eventos de marcas, ferias y retiros de creadoras.' },
-      { emoji: '🔧', title: 'Deals co-branded', description: 'Campañas construidas específicamente para ti como creadora.' },
+      { emoji: '💎', title: 'Quartalsbonus von $500', description: '$500 extra alle drei Monate als Top Creator.' },
+      { emoji: '🤝', title: 'Agentur Partnership', description: 'Offizieller Papaya Partner-Vertrag mit exklusiven Konditionen.' },
+      { emoji: '✈️', title: 'Event- und Reiseeinladungen', description: 'Einladungen zu Marken-Events, Messen und Creator Retreats.' },
+      { emoji: '🔧', title: 'Co-Branded Deals', description: 'Kampagnen speziell für dich als Creator entwickelt.' },
     ],
   },
 }
 
-const LEVELS: CreatorLevel[] = ['Initiation', 'Foundation', 'Growth', 'Scale', 'Elite']
+const LEVELS: CreatorLevel[] = ['Initiation', 'Rising', 'Pro', 'Elite']
 
 export default async function RewardsPage() {
   const supabase = await createClient()
@@ -98,23 +87,23 @@ export default async function RewardsPage() {
             height={48}
           />
           <div>
-            <h1 className="font-playfair text-4xl text-brand-black mb-1">Tus recompensas.</h1>
+            <h1 className="font-playfair text-4xl text-brand-black mb-1">Deine Belohnungen</h1>
             <p className="font-dm-sans text-gray-500 text-sm">
-              Lo que ganas ahora — y lo que te espera.
+              Was du jetzt bekommst — und was dich erwartet.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {LEVELS.map((level, idx) => {
-            const config = REWARDS[level]
-            const isCurrent = creator?.level === level
+          {LEVELS.map((lvl, idx) => {
+            const config = REWARDS[lvl]
+            const isCurrent = creator?.level === lvl
             const isPast = idx < currentLevelIndex
             const isFuture = idx > currentLevelIndex
 
             return (
               <div
-                key={level}
+                key={lvl}
                 className={`bg-white rounded-2xl border overflow-hidden transition-all ${
                   isCurrent ? 'border-brand-pink shadow-md' : isPast ? 'border-gray-100' : 'border-gray-100 opacity-45'
                 }`}
@@ -129,24 +118,24 @@ export default async function RewardsPage() {
                   <div className="flex items-center gap-2.5">
                     <span className="text-2xl">{config.emoji}</span>
                     <div>
-                      <h2 className="font-playfair text-xl text-brand-black leading-none">{level}</h2>
+                      <h2 className="font-playfair text-xl text-brand-black leading-none">{lvl}</h2>
                       <p className="font-dm-sans text-xs text-gray-400 mt-0.5">{config.gmvRange}</p>
                     </div>
                   </div>
                   <div>
                     {isCurrent && (
                       <span className="font-dm-sans text-xs font-bold px-2.5 py-1 rounded-full text-white" style={{ backgroundColor: config.color }}>
-                        Actual
+                        Aktuell
                       </span>
                     )}
                     {isPast && (
                       <span className="font-dm-sans text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
-                        ✓ Desbloqueado
+                        Freigeschaltet
                       </span>
                     )}
                     {isFuture && (
                       <span className="font-dm-sans text-xs font-medium text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">
-                        🔒 Bloqueado
+                        🔒 Gesperrt
                       </span>
                     )}
                   </div>

@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import Nav from '@/components/Nav'
-import { Creator, CreatorLevel, LEVEL_CONFIG } from '@/lib/types'
+import RewardCTA from '@/components/RewardCTA'
+import { Creator, CreatorLevel, LEVEL_CONFIG, RewardRow } from '@/lib/types'
 
 const LEVEL_PERKS: Record<CreatorLevel, { title: string; gmvRange: string; perks: string[]; color: string; emoji: string }> = {
   Initiation: {
@@ -11,72 +13,58 @@ const LEVEL_PERKS: Record<CreatorLevel, { title: string; gmvRange: string; perks
     emoji: '🌱',
     color: '#9CA3AF',
     perks: [
-      'Acceso a la comunidad de creadoras',
-      'Catálogo básico de productos',
-      'Tips y consejos semanales',
-      'Newsletter para creadoras',
-      'Acceso al dashboard',
+      'Zugang zur Creator Community',
+      'Basis Produktkatalog',
+      'Tipps und wöchentliche Ratschläge',
+      'Creator Newsletter',
+      'Dashboard Zugang',
     ],
   },
-  Foundation: {
-    title: 'Foundation',
+  Rising: {
+    title: 'Rising',
     gmvRange: '$300 – $999',
     emoji: '🌸',
     color: '#F4A7C3',
     perks: [
-      'Todo lo de Initiation',
-      'Productos exclusivos desbloqueados',
-      'Soporte prioritario',
-      'Alertas de marcas (primera notificación)',
-      'Badge de $300 GMV',
-      'Briefing mensual de creadoras',
+      'Alles von Initiation',
+      'Exklusive Produkte freigeschaltet',
+      'Prioritäts-Support',
+      'Marken-Benachrichtigungen',
+      'Badge für $300 GMV',
+      'Monatliches Creator Briefing',
     ],
   },
-  Growth: {
-    title: 'Growth',
-    gmvRange: '$1,000 – $4,999',
+  Pro: {
+    title: 'Pro',
+    gmvRange: '$1.000 – $9.999',
     emoji: '💚',
     color: '#1B5E3B',
     perks: [
-      'Todo lo de Foundation',
-      'Campañas premium (exclusivas Growth+)',
-      'Manager de creadoras dedicado',
-      'Llamadas de estrategia 1:1 (mensuales)',
-      'Badge de $1,000 GMV',
-      'Bono trimestral',
-    ],
-  },
-  Scale: {
-    title: 'Scale',
-    gmvRange: '$5,000 – $9,999',
-    emoji: '🚀',
-    color: '#8B5CF6',
-    perks: [
-      'Todo lo de Growth',
-      'Herramientas avanzadas y soporte dedicado',
-      'Campañas exclusivas Scale+',
-      'Badge de $5,000 GMV',
-      'Bono trimestral mejorado',
-      'Acceso anticipado a nuevos productos',
+      'Alles von Rising',
+      'Premium Kampagnen (exklusiv Pro+)',
+      'Dedizierter Account Manager',
+      'Monatliche 1:1 Strategie-Calls',
+      'Badge für $1.000 GMV',
+      'Quartalsbonus',
     ],
   },
   Elite: {
     title: 'Elite',
-    gmvRange: '$10,000+',
+    gmvRange: '$10.000+',
     emoji: '👑',
     color: '#F59E0B',
     perks: [
-      'Todo lo de Scale',
-      'Todas las campañas y comisiones más altas',
-      'Deals co-branded y partnership con la agencia',
-      'Badge de $10,000 GMV',
-      'Invitaciones a eventos y viajes',
-      'Bono trimestral de $500',
+      'Alles von Pro',
+      'Alle Kampagnen und höchste Provisionen',
+      'Co-Branded Deals und Agentur-Partnership',
+      'Badge für $10.000 GMV',
+      'Einladungen zu Events und Reisen',
+      'Quartalsbonus von $500',
     ],
   },
 }
 
-const LEVELS: CreatorLevel[] = ['Initiation', 'Foundation', 'Growth', 'Scale', 'Elite']
+const LEVELS: CreatorLevel[] = ['Initiation', 'Rising', 'Pro', 'Elite']
 
 function getLevelIndex(level: CreatorLevel): number {
   return LEVELS.indexOf(level)
@@ -97,6 +85,28 @@ export default async function ProgressPage() {
   const level = creator?.level ?? null
   const currentLevelIndex = creator ? getLevelIndex(creator.level) : 0
 
+  // Fetch rewards
+  const admin = createAdminClient()
+  const { data: rewardsData } = await admin
+    .from('rewards')
+    .select('*')
+    .order('sort_order')
+  const rewards = (rewardsData ?? []) as RewardRow[]
+
+  // Fetch creator rewards
+  const creatorRewardStatuses: Record<string, string> = {}
+  if (creator) {
+    const { data: crData } = await supabase
+      .from('creator_rewards')
+      .select('reward_id, status')
+      .eq('creator_id', creator.id)
+    if (crData) {
+      crData.forEach((cr: { reward_id: string; status: string }) => {
+        creatorRewardStatuses[cr.reward_id] = cr.status
+      })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-brand-light-pink">
       <Nav level={level} />
@@ -110,9 +120,9 @@ export default async function ProgressPage() {
             height={48}
           />
           <div>
-            <h1 className="font-playfair text-4xl text-brand-black mb-1">Tu camino.</h1>
+            <h1 className="font-playfair text-4xl text-brand-black mb-1">Dein Fortschritt</h1>
             <p className="font-dm-sans text-gray-500 text-sm">
-              Cinco niveles, una misión. Mira dónde estás y qué viene después.
+              Vier Level, eine Mission. Sieh wo du stehst und was als nächstes kommt.
             </p>
           </div>
         </div>
@@ -120,7 +130,7 @@ export default async function ProgressPage() {
         {creator && (
           <div className="mb-8 inline-flex items-center gap-3 bg-white border border-gray-100 rounded-full px-5 py-2.5 shadow-sm">
             <span className="text-xl">{LEVEL_PERKS[creator.level].emoji}</span>
-            <span className="font-dm-sans text-sm font-semibold text-brand-black">Estás en el nivel</span>
+            <span className="font-dm-sans text-sm font-semibold text-brand-black">Du bist auf Level</span>
             <span
               className="font-dm-sans text-sm font-bold px-3 py-0.5 rounded-full text-white"
               style={{ backgroundColor: LEVEL_PERKS[creator.level].color }}
@@ -134,15 +144,16 @@ export default async function ProgressPage() {
         )}
 
         <div className="flex flex-col gap-4">
-          {LEVELS.map((level, idx) => {
-            const config = LEVEL_PERKS[level]
-            const isCurrent = creator?.level === level
+          {LEVELS.map((lvl, idx) => {
+            const config = LEVEL_PERKS[lvl]
+            const isCurrent = creator?.level === lvl
             const isPast = idx < currentLevelIndex
             const isFuture = idx > currentLevelIndex
+            const levelRewards = rewards.filter((r) => r.level_name === lvl)
 
             return (
               <div
-                key={level}
+                key={lvl}
                 className={`relative bg-white rounded-2xl border transition-all overflow-hidden ${
                   isCurrent ? 'border-brand-pink shadow-md' : isPast ? 'border-gray-100' : 'border-gray-100 opacity-50'
                 }`}
@@ -161,17 +172,17 @@ export default async function ProgressPage() {
                           <h2 className="font-playfair text-2xl text-brand-black leading-none">{config.title}</h2>
                           {isCurrent && (
                             <span className="font-dm-sans text-xs font-bold px-2.5 py-0.5 rounded-full text-white" style={{ backgroundColor: config.color }}>
-                              Actual
+                              Aktuell
                             </span>
                           )}
                           {isPast && (
                             <span className="font-dm-sans text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                              ✓ Alcanzado
+                              Erreicht
                             </span>
                           )}
                           {isFuture && (
                             <span className="font-dm-sans text-xs font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
-                              🔒 Bloqueado
+                              🔒 Gesperrt
                             </span>
                           )}
                         </div>
@@ -191,17 +202,45 @@ export default async function ProgressPage() {
                     ))}
                   </ul>
 
-                  {isCurrent && creator && LEVEL_CONFIG[level].target && (
+                  {/* Level Rewards */}
+                  {levelRewards.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-50">
+                      <h4 className="font-dm-sans text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Belohnungen</h4>
+                      <div className="space-y-2">
+                        {levelRewards.map((r) => {
+                          const status = creatorRewardStatuses[r.id]
+                          return (
+                            <div key={r.id} className={`flex items-start gap-3 p-3 rounded-xl ${isFuture ? 'bg-gray-50/50' : 'bg-gray-50'}`}>
+                              <span className={`text-xl shrink-0 ${isFuture ? 'grayscale opacity-40' : ''}`}>{r.emoji}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className={`font-dm-sans text-sm font-semibold ${isFuture ? 'text-gray-400' : 'text-brand-black'}`}>
+                                  {r.title}
+                                </p>
+                                <p className={`font-dm-sans text-xs mt-0.5 ${isFuture ? 'text-gray-300' : 'text-gray-500'}`}>
+                                  {r.description}
+                                </p>
+                              </div>
+                              {!isFuture && r.cta_type && (
+                                <RewardCTA reward={r} status={status ?? null} />
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {isCurrent && creator && LEVEL_CONFIG[lvl].target && (
                     <div className="mt-5 pt-4 border-t border-gray-50">
                       <div className="flex justify-between mb-1.5">
                         <span className="font-dm-sans text-xs text-gray-400">${creator.gmv.toLocaleString('en-US')} GMV</span>
-                        <span className="font-dm-sans text-xs text-gray-400">Meta: ${(LEVEL_CONFIG[level].target ?? 0).toLocaleString('en-US')}</span>
+                        <span className="font-dm-sans text-xs text-gray-400">Ziel: ${(LEVEL_CONFIG[lvl].target ?? 0).toLocaleString('en-US')}</span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-700"
                           style={{
-                            width: `${Math.min((creator.gmv / (LEVEL_CONFIG[level].target ?? 1)) * 100, 100)}%`,
+                            width: `${Math.min((creator.gmv / (LEVEL_CONFIG[lvl].target ?? 1)) * 100, 100)}%`,
                             backgroundColor: config.color,
                           }}
                         />

@@ -15,7 +15,20 @@ export default async function AdminPage() {
 
   const supabase = createAdminClient()
 
-  const [creatorsRes, productsRes, campaignsRes, applicationsRes, productRequestsRes, initiationSelectionsRes] = await Promise.all([
+  const [
+    creatorsRes,
+    productsRes,
+    campaignsRes,
+    applicationsRes,
+    productRequestsRes,
+    initiationSelectionsRes,
+    announcementsRes,
+    levelsRes,
+    rewardsRes,
+    creatorRewardsRes,
+    settingsRes,
+    violationsRes,
+  ] = await Promise.all([
     supabase
       .from('creators')
       .select('*')
@@ -40,6 +53,30 @@ export default async function AdminPage() {
       .from('creator_initiation_products')
       .select('creator_id, product_id, product:products(name), creator:creators(name, email)')
       .order('selected_at', { ascending: false }),
+    supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('levels')
+      .select('*')
+      .order('sort_order'),
+    supabase
+      .from('rewards')
+      .select('*')
+      .order('sort_order'),
+    supabase
+      .from('creator_rewards')
+      .select('*, creator:creators(name, email), reward:rewards(title, level_name)')
+      .order('claimed_at', { ascending: false }),
+    supabase
+      .from('site_settings')
+      .select('*')
+      .single(),
+    supabase
+      .from('violations')
+      .select('*, creator:creators(name, email)')
+      .order('created_at', { ascending: false }),
   ])
 
   return (
@@ -51,6 +88,14 @@ export default async function AdminPage() {
       productRequests={productRequestsRes.data ?? []}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       initiationSelections={(initiationSelectionsRes.data ?? []) as any}
+      announcements={announcementsRes.data ?? []}
+      levels={levelsRes.data ?? []}
+      rewards={rewardsRes.data ?? []}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      creatorRewards={(creatorRewardsRes.data ?? []) as any}
+      settings={settingsRes.data ?? null}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      violations={(violationsRes.data ?? []) as any}
     />
   )
 }

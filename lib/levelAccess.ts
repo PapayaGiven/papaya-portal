@@ -9,15 +9,15 @@ export function canSeeLeaderboard(level: CreatorLevel): boolean {
 }
 
 export function canSeeHashtags(level: CreatorLevel): boolean {
-  return level === 'Growth' || level === 'Scale' || level === 'Elite'
+  return level === 'Pro' || level === 'Elite'
 }
 
 export function canSeeExampleVideos(level: CreatorLevel): boolean {
-  return level === 'Growth' || level === 'Scale' || level === 'Elite'
+  return level === 'Pro' || level === 'Elite'
 }
 
 export function hasAccountManager(level: CreatorLevel): boolean {
-  return level === 'Growth' || level === 'Scale' || level === 'Elite'
+  return level === 'Pro' || level === 'Elite'
 }
 
 export function hasEliteFeatures(level: CreatorLevel): boolean {
@@ -27,26 +27,27 @@ export function hasEliteFeatures(level: CreatorLevel): boolean {
 export function getNavLinks(level: CreatorLevel | null): { href: string; label: string }[] {
   const base = [
     { href: '/dashboard', label: 'Dashboard' },
-    { href: '/strategy', label: 'Mi Estrategia' },
-    { href: '/products', label: 'Productos' },
-    { href: '/progress', label: 'Mi Progreso' },
-    { href: '/rewards', label: 'Recompensas' },
+    { href: '/strategy', label: 'Meine Strategie' },
+    { href: '/products', label: 'Produkte' },
+    { href: '/progress', label: 'Mein Fortschritt' },
+    { href: '/rewards', label: 'Belohnungen' },
+    { href: '/violations', label: 'Verstoß melden' },
   ]
 
   if (!level || level === 'Initiation') return base
 
   return [
     { href: '/dashboard', label: 'Dashboard' },
-    { href: '/strategy', label: 'Mi Estrategia' },
-    { href: '/products', label: 'Productos' },
-    { href: '/campaigns', label: 'Campañas' },
-    { href: '/leaderboard', label: 'Ranking' },
-    { href: '/progress', label: 'Mi Progreso' },
-    { href: '/rewards', label: 'Recompensas' },
+    { href: '/strategy', label: 'Meine Strategie' },
+    { href: '/products', label: 'Produkte' },
+    { href: '/campaigns', label: 'Kampagnen' },
+    { href: '/progress', label: 'Mein Fortschritt' },
+    { href: '/rewards', label: 'Belohnungen' },
+    { href: '/violations', label: 'Verstoß melden' },
   ]
 }
 
-export const LEVEL_ORDER: CreatorLevel[] = ['Initiation', 'Foundation', 'Growth', 'Scale', 'Elite']
+export const LEVEL_ORDER: CreatorLevel[] = ['Initiation', 'Rising', 'Pro', 'Elite']
 
 export function getLevelIndex(level: CreatorLevel): number {
   return LEVEL_ORDER.indexOf(level)

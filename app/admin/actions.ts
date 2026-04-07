@@ -36,11 +36,10 @@ export async function updateCreatorGMV(id: string, gmv: number): Promise<{ error
 
   let newLevel: CreatorLevel = 'Initiation'
   if (gmv >= 10000) newLevel = 'Elite'
-  else if (gmv >= 5000) newLevel = 'Scale'
-  else if (gmv >= 1000) newLevel = 'Growth'
-  else if (gmv >= 300) newLevel = 'Foundation'
+  else if (gmv >= 1000) newLevel = 'Pro'
+  else if (gmv >= 300) newLevel = 'Rising'
 
-  const newTarget = LEVEL_CONFIG[newLevel].target ?? 5000
+  const newTarget = LEVEL_CONFIG[newLevel].target ?? 10000
 
   const { error } = await supabase
     .from('creators')
@@ -54,7 +53,7 @@ export async function updateCreatorGMV(id: string, gmv: number): Promise<{ error
 
 export async function updateCreatorLevel(id: string, level: CreatorLevel): Promise<{ error?: string }> {
   const supabase = createAdminClient()
-  const newTarget = LEVEL_CONFIG[level].target ?? 5000
+  const newTarget = LEVEL_CONFIG[level].target ?? 10000
 
   const { error } = await supabase
     .from('creators')
@@ -328,6 +327,7 @@ export async function updateCreatorEliteSettings(
     mastermind_date?: string | null
     account_manager_name?: string | null
     account_manager_whatsapp?: string | null
+    booking_link?: string | null
   }
 ): Promise<{ error?: string }> {
   const supabase = createAdminClient()
@@ -356,6 +356,9 @@ export interface StrategyProductInput {
   is_retainer: boolean
   campaign_id: string | null
   videos: VideoInput[]
+  video_focus: string | null
+  quick_checklist: string[]
+  brief_url: string | null
 }
 
 export async function saveStrategy(data: {
@@ -389,6 +392,9 @@ export async function saveStrategy(data: {
         hashtags: p.hashtags,
         is_retainer: p.is_retainer,
         campaign_id: p.campaign_id || null,
+        video_focus: p.video_focus || null,
+        quick_checklist: p.quick_checklist ?? [],
+        brief_url: p.brief_url || null,
       })
       .select('id')
       .single()
@@ -440,4 +446,151 @@ export async function getStrategyForAdmin(
   if (pError) return { error: pError.message }
 
   return { data: { id: strategy.id, products: products ?? [] } }
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+export async function getSettings() {
+  const supabase = createAdminClient()
+  const { data } = await supabase.from('site_settings').select('*').single()
+  return data
+}
+
+export async function updateSettings(data: {
+  calls_per_month_initiation: number
+  calls_per_month_rising: number
+  calls_per_month_pro: number
+  calls_per_month_elite: number
+  booking_link_pro: string | null
+  booking_link_elite: string | null
+}): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  // Upsert the single settings row
+  const { error } = await supabase.from('site_settings').upsert({ id: 'default', ...data }, { onConflict: 'id' })
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  revalidatePath('/dashboard')
+  return {}
+}
+
+// ── Announcements ─────────────────────────────────────────────────────────────
+
+export async function addAnnouncement(data: {
+  title: string
+  message: string
+  display_type: 'banner' | 'popup'
+}): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('announcements').insert({ ...data, is_active: true })
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  revalidatePath('/dashboard')
+  return {}
+}
+
+export async function updateAnnouncement(
+  id: string,
+  data: Partial<{ title: string; message: string; display_type: string; is_active: boolean }>
+): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('announcements').update(data).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  revalidatePath('/dashboard')
+  return {}
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+  const supabase = createAdminClient()
+  await supabase.from('announcements').delete().eq('id', id)
+  revalidatePath('/admin')
+  revalidatePath('/dashboard')
+}
+
+// ── Levels ────────────────────────────────────────────────────────────────────
+
+export async function updateLevel(
+  id: string,
+  data: Partial<{ emoji: string; color: string; includes: string[] }>
+): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('levels').update(data).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  revalidatePath('/progress')
+  return {}
+}
+
+export async function seedDefaultLevels(): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const defaults = [
+    { name: 'Initiation', emoji: '🌱', min_gmv: 0, max_gmv: 299, color: '#9CA3AF', includes: ['Community Zugang', 'Basis Produktkatalog', 'Dashboard'], sort_order: 0 },
+    { name: 'Rising', emoji: '🌸', min_gmv: 300, max_gmv: 999, color: '#F4A7C3', includes: ['Alles von Initiation', 'Kampagnen freigeschaltet', 'Ranking freigeschaltet'], sort_order: 1 },
+    { name: 'Pro', emoji: '💚', min_gmv: 1000, max_gmv: 9999, color: '#1B5E3B', includes: ['Alles von Rising', '1:1 Calls', 'Account Manager', 'Hashtags & Beispielvideos'], sort_order: 2 },
+    { name: 'Elite', emoji: '👑', min_gmv: 10000, max_gmv: null, color: '#F59E0B', includes: ['Alles von Pro', 'Partnership', 'Premium-Boni', 'Mastermind Events'], sort_order: 3 },
+  ]
+  const { error } = await supabase.from('levels').upsert(defaults, { onConflict: 'name' })
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return {}
+}
+
+// ── Rewards ───────────────────────────────────────────────────────────────────
+
+export async function addReward(data: {
+  level_name: string
+  title: string
+  description: string
+  emoji: string
+  cta_type: string | null
+  cta_url: string | null
+  sort_order: number
+}): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('rewards').insert(data)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  revalidatePath('/rewards')
+  return {}
+}
+
+export async function updateReward(
+  id: string,
+  data: Partial<{ title: string; description: string; emoji: string; cta_type: string | null; cta_url: string | null; sort_order: number }>
+): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('rewards').update(data).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  revalidatePath('/rewards')
+  return {}
+}
+
+export async function deleteReward(id: string): Promise<void> {
+  const supabase = createAdminClient()
+  await supabase.from('rewards').delete().eq('id', id)
+  revalidatePath('/admin')
+  revalidatePath('/rewards')
+}
+
+export async function confirmRewardReceived(creatorRewardId: string): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('creator_rewards').update({ status: 'received' }).eq('id', creatorRewardId)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return {}
+}
+
+// ── Violations ────────────────────────────────────────────────────────────────
+
+export async function updateViolationStatus(id: string, status: string): Promise<void> {
+  const supabase = createAdminClient()
+  await supabase.from('violations').update({ status }).eq('id', id)
+  revalidatePath('/admin')
+}
+
+export async function updateViolationNotes(id: string, admin_notes: string): Promise<void> {
+  const supabase = createAdminClient()
+  await supabase.from('violations').update({ admin_notes }).eq('id', id)
+  revalidatePath('/admin')
 }

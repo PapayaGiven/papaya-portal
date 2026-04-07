@@ -14,7 +14,7 @@ function getTimeRemaining(deadline: string | null): string {
   const end = new Date(deadline).getTime()
   const diff = end - now
 
-  if (diff <= 0) return 'Expirada'
+  if (diff <= 0) return 'Abgelaufen'
 
   const hours = Math.floor(diff / (1000 * 60 * 60))
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
@@ -28,9 +28,8 @@ function getTimeRemaining(deadline: string | null): string {
 
 const LEVEL_COLORS: Record<string, string> = {
   Initiation: 'bg-gray-100 text-gray-600',
-  Foundation: 'bg-pink-100 text-pink-700',
-  Growth: 'bg-emerald-100 text-emerald-700',
-  Scale: 'bg-purple-100 text-purple-700',
+  Rising: 'bg-pink-100 text-pink-700',
+  Pro: 'bg-emerald-100 text-emerald-700',
   Elite: 'bg-amber-100 text-amber-700',
 }
 
@@ -67,7 +66,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
           <span className="font-dm-sans font-bold text-2xl text-brand-pink">
             {campaign.commission_rate}%
           </span>
-          <p className="font-dm-sans text-xs text-gray-400">Comisión</p>
+          <p className="font-dm-sans text-xs text-gray-400">Provision</p>
         </div>
       </div>
 
@@ -90,7 +89,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
               LEVEL_COLORS[campaign.min_level] || 'bg-gray-100 text-gray-600'
             }`}
           >
-            desde {campaign.min_level}
+            ab {campaign.min_level}
           </span>
         )}
 
@@ -103,8 +102,8 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
             }`}
           >
             {campaign.spots_left <= 3
-              ? `⚠️ ¡Solo quedan ${campaign.spots_left} lugares!`
-              : `${campaign.spots_left} lugares disponibles`}
+              ? `Nur noch ${campaign.spots_left} Plätze!`
+              : `${campaign.spots_left} Plätze verfügbar`}
           </span>
         )}
 
@@ -127,7 +126,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         className="mt-auto w-full py-2.5 rounded-xl font-dm-sans font-semibold text-sm text-white text-center transition-all hover:opacity-90 active:scale-[0.98] block"
         style={{ backgroundColor: '#1B5E3B' }}
       >
-        Aplicar →
+        Bewerben →
       </Link>
     </div>
   )

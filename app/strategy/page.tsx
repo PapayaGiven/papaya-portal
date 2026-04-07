@@ -42,7 +42,7 @@ function VideoCard({ video }: { video: { id: string; video_url: string; thumbnai
               <path d="M8 5v14l11-7z" />
             </svg>
           </div>
-          <p className="font-dm-sans text-xs text-gray-400">Ver en TikTok</p>
+          <p className="font-dm-sans text-xs text-gray-400">Auf TikTok ansehen</p>
         </div>
       )}
       <div className="px-3 py-2 bg-white">
@@ -70,7 +70,7 @@ export default async function StrategyPage() {
 
   const now = new Date()
   const monthDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-  const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const monthLabel = now.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
   const today = now.toISOString().split('T')[0]
 
   let strategyId: string | null = null
@@ -128,7 +128,7 @@ export default async function StrategyPage() {
             height={48}
           />
           <div>
-            <h1 className="font-playfair text-4xl text-brand-black mb-1">Mi Estrategia</h1>
+            <h1 className="font-playfair text-4xl text-brand-black mb-1">Meine Strategie</h1>
             <p className="font-dm-sans text-sm text-gray-500">{monthLabel}</p>
           </div>
         </div>
@@ -154,10 +154,10 @@ export default async function StrategyPage() {
           <div className="bg-white rounded-2xl border border-brand-pink/20 p-10 text-center">
             <p className="text-4xl mb-3">📋</p>
             <h2 className="font-playfair text-2xl text-brand-black mb-2">
-              Aún no hay estrategia para {monthLabel}
+              Noch keine Strategie für {monthLabel}
             </h2>
             <p className="font-dm-sans text-gray-500 text-sm">
-              Tu agencia creará tu estrategia mensual pronto.
+              Deine Agentur wird bald deine monatliche Strategie erstellen.
             </p>
           </div>
         ) : (
@@ -197,7 +197,7 @@ export default async function StrategyPage() {
                           )}
                           {product?.commission_rate != null && (
                             <span className="font-dm-sans text-xs font-bold text-brand-pink">
-                              {product.commission_rate}% Comisión
+                              {product.commission_rate}% Provision
                             </span>
                           )}
                         </div>
@@ -211,7 +211,7 @@ export default async function StrategyPage() {
                       {sp.is_retainer && (
                         <span className="font-dm-sans text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                          Campaña Retainer
+                          Retainer Kampagne
                         </span>
                       )}
                       {campaign && (
@@ -224,24 +224,66 @@ export default async function StrategyPage() {
                   <div className="grid grid-cols-3 divide-x divide-gray-50 border-b border-gray-50">
                     <div className="px-5 py-4 text-center">
                       <p className="font-playfair text-2xl font-bold text-brand-black">{sp.videos_per_day ?? '–'}</p>
-                      <p className="font-dm-sans text-xs text-gray-400 mt-0.5">Videos / Día</p>
+                      <p className="font-dm-sans text-xs text-gray-400 mt-0.5">Videos / Tag</p>
                     </div>
                     <div className="px-5 py-4 text-center">
                       <p className="font-playfair text-2xl font-bold text-brand-black">{sp.live_hours_per_week ?? '–'}h</p>
-                      <p className="font-dm-sans text-xs text-gray-400 mt-0.5">Live / Semana</p>
+                      <p className="font-dm-sans text-xs text-gray-400 mt-0.5">Live / Woche</p>
                     </div>
                     <div className="px-5 py-4 text-center">
                       <p className="font-playfair text-2xl font-bold text-brand-green">
                         {sp.gmv_target != null ? `$${Number(sp.gmv_target).toLocaleString('en-US')}` : '–'}
                       </p>
-                      <p className="font-dm-sans text-xs text-gray-400 mt-0.5">Meta GMV</p>
+                      <p className="font-dm-sans text-xs text-gray-400 mt-0.5">GMV Ziel</p>
                     </div>
                   </div>
+
+                  {/* Video Focus */}
+                  {sp.video_focus && (
+                    <div className="px-6 py-4 border-b border-gray-50">
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                        <span className="text-lg shrink-0">🎯</span>
+                        <div>
+                          <h3 className="font-dm-sans text-xs font-semibold text-amber-700 uppercase tracking-widest mb-1">Videofokus</h3>
+                          <p className="font-dm-sans text-sm text-amber-900">{sp.video_focus}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick Checklist */}
+                  {sp.quick_checklist && sp.quick_checklist.length > 0 && (
+                    <div className="px-6 py-4 border-b border-gray-50">
+                      <h3 className="font-dm-sans text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Schnell-Checkliste</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {sp.quick_checklist.map((item, i) => (
+                          <span key={i} className="inline-flex items-center gap-1.5 font-dm-sans text-sm bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200">
+                            <span className="text-emerald-500">✓</span>
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Brief URL */}
+                  {sp.brief_url && (
+                    <div className="px-6 py-3 border-b border-gray-50">
+                      <a
+                        href={sp.brief_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 font-dm-sans text-sm font-semibold text-brand-green hover:underline"
+                      >
+                        📄 Brief öffnen →
+                      </a>
+                    </div>
+                  )}
 
                   {/* Strategy note */}
                   {sp.strategy_note && (
                     <div className="px-6 py-4 border-b border-gray-50">
-                      <h3 className="font-dm-sans text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Estrategia</h3>
+                      <h3 className="font-dm-sans text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Strategie</h3>
                       <p className="font-dm-sans text-sm text-gray-700 leading-relaxed whitespace-pre-line">{sp.strategy_note}</p>
                     </div>
                   )}
@@ -263,7 +305,7 @@ export default async function StrategyPage() {
                   {/* Example videos — Pro+ only */}
                   {showVideos && sp.videos && sp.videos.length > 0 && (
                     <div className="px-6 py-4">
-                      <h3 className="font-dm-sans text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Videos de ejemplo</h3>
+                      <h3 className="font-dm-sans text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Beispielvideos</h3>
                       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
                         {sp.videos.map((video) => (
                           <VideoCard key={video.id} video={video} />
@@ -276,7 +318,7 @@ export default async function StrategyPage() {
                   {!showHashtags && (sp.hashtags?.length ?? 0) > 0 && (
                     <div className="px-6 py-3 bg-gray-50/50 border-t border-gray-50">
                       <p className="font-dm-sans text-xs text-gray-400">
-                        🔒 Hashtags y videos de ejemplo se desbloquean en <strong>Growth</strong>.
+                        🔒 Hashtags und Beispielvideos werden ab <strong>Pro</strong> freigeschaltet.
                       </p>
                     </div>
                   )}
