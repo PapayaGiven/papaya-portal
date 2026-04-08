@@ -59,7 +59,7 @@ export default function DailyTasks({ tasks, creatorId }: DailyTasksProps) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="font-dm-sans font-semibold text-brand-black text-base">
-            Tareas de hoy
+            Heutige Aufgaben
           </h3>
           {hasTasks && (
             <p
@@ -68,8 +68,8 @@ export default function DailyTasks({ tasks, creatorId }: DailyTasksProps) {
               }`}
             >
               {allComplete
-                ? '🎉 ¡Todas las tareas completadas!'
-                : 'Completa tus tareas diarias.'}
+                ? '🎉 Alle Aufgaben erledigt!'
+                : 'Erledige deine täglichen Aufgaben.'}
             </p>
           )}
         </div>
@@ -91,10 +91,10 @@ export default function DailyTasks({ tasks, creatorId }: DailyTasksProps) {
         <div className="text-center py-8">
           <p className="text-4xl mb-3">📭</p>
           <p className="font-dm-sans text-sm text-gray-400">
-            No hay tareas para hoy.
+            Keine Aufgaben für heute.
           </p>
           <p className="font-dm-sans text-xs text-gray-300 mt-1">
-            Tu agencia te asignará tareas pronto.
+            Deine Agentur wird dir bald Aufgaben zuweisen.
           </p>
         </div>
       ) : (
@@ -119,7 +119,7 @@ export default function DailyTasks({ tasks, creatorId }: DailyTasksProps) {
                       ? 'bg-emerald-500 border-emerald-500'
                       : 'border-gray-300 hover:border-brand-green'
                   } disabled:opacity-50`}
-                  aria-label={done ? 'Marcar como pendiente' : 'Marcar como hecho'}
+                  aria-label={done ? 'Als ausstehend markieren' : 'Als erledigt markieren'}
                 >
                   {done && (
                     <svg
@@ -145,7 +145,7 @@ export default function DailyTasks({ tasks, creatorId }: DailyTasksProps) {
                       done ? 'line-through text-gray-400' : 'text-brand-black'
                     }`}
                   >
-                    {task.task_name || 'Tarea'}
+                    {task.task_name || 'Aufgabe'}
                   </p>
                   {task.product && (
                     <p className="font-dm-sans text-xs text-gray-400 truncate">

@@ -32,7 +32,7 @@ export default async function CampaignDetailPage({ params }: { params: { id: str
           href="/campaigns"
           className="inline-flex items-center gap-1.5 font-dm-sans text-sm text-gray-400 hover:text-brand-green transition mb-6"
         >
-          ← Volver a campañas
+          ← Zurück zu Kampagnen
         </Link>
 
         {/* Campaign card */}

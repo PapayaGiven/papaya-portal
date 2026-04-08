@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 const JOIN_URL = process.env.NEXT_PUBLIC_JOIN_URL ?? 'https://papaya-given.mykajabi.com/offers/QzqH444d'
 
-function LockOverlay({ label = 'Solo para miembros — Únete para desbloquear →' }: { label?: string }) {
+function LockOverlay({ label = 'Nur für Mitglieder — Tritt bei, um freizuschalten →' }: { label?: string }) {
   return (
     <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-2xl">
       <div className="bg-brand-pink/10 border border-brand-pink/30 rounded-2xl px-6 py-5 text-center max-w-xs mx-4">
@@ -19,7 +19,7 @@ function LockOverlay({ label = 'Solo para miembros — Únete para desbloquear �
           rel="noopener noreferrer"
           className="inline-block font-dm-sans text-xs font-bold bg-brand-green text-white px-4 py-2 rounded-xl hover:bg-brand-green/90 transition"
         >
-          Únete a Papaya →
+          Papaya beitreten →
         </a>
       </div>
     </div>
@@ -60,7 +60,7 @@ export default async function HackPage() {
             rel="noopener noreferrer"
             className="font-dm-sans text-sm font-bold bg-brand-green text-white px-4 py-2 rounded-xl hover:bg-brand-green/90 transition"
           >
-            Únete ahora →
+            Jetzt beitreten →
           </a>
         </div>
       </header>
@@ -78,7 +78,7 @@ export default async function HackPage() {
           </div>
           <h1 className="font-playfair text-5xl text-brand-black mb-3">Papaya Social Club</h1>
           <p className="font-dm-sans text-lg text-gray-500 mb-6">
-            Los mejores productos, videos virales y campañas — gratis.
+            Die besten Produkte, virale Videos und Kampagnen — kostenlos.
           </p>
           <a
             href={JOIN_URL}
@@ -86,15 +86,15 @@ export default async function HackPage() {
             rel="noopener noreferrer"
             className="inline-block font-dm-sans text-base font-bold bg-brand-green text-white px-8 py-3.5 rounded-2xl hover:bg-brand-green/90 transition shadow-lg"
           >
-            Únete a Papaya Social Club →
+            Papaya Social Club beitreten →
           </a>
         </div>
 
         {/* Top Products */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-playfair text-3xl text-brand-black">Productos top</h2>
-            <span className="font-dm-sans text-xs text-gray-400 bg-white border border-gray-100 px-3 py-1 rounded-full">{products.length} productos</span>
+            <h2 className="font-playfair text-3xl text-brand-black">Top-Produkte</h2>
+            <span className="font-dm-sans text-xs text-gray-400 bg-white border border-gray-100 px-3 py-1 rounded-full">{products.length} Produkte</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             {products.map((p) => (
@@ -106,27 +106,27 @@ export default async function HackPage() {
                 )}
                 {p.is_exclusive && (
                   <span className="font-dm-sans text-xs font-bold bg-brand-black text-white px-2 py-0.5 rounded-full self-start tracking-wide">
-                    EXCLUSIVO
+                    EXKLUSIV
                   </span>
                 )}
                 <p className="font-dm-sans font-semibold text-brand-black text-sm leading-snug">{p.name}</p>
                 <p className="font-dm-sans font-bold text-xl text-brand-pink leading-none">
                   {p.commission_rate}%
                 </p>
-                <p className="font-dm-sans text-xs text-gray-400">Comisión</p>
+                <p className="font-dm-sans text-xs text-gray-400">Provision</p>
               </div>
             ))}
           </div>
           {products.length === 0 && (
-            <p className="text-center text-gray-400 py-8 font-dm-sans">Productos próximamente.</p>
+            <p className="text-center text-gray-400 py-8 font-dm-sans">Produkte folgen in Kürze.</p>
           )}
         </section>
 
         {/* Campaigns */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-playfair text-3xl text-brand-black">Campañas activas</h2>
-            <span className="font-dm-sans text-xs text-gray-400 bg-white border border-gray-100 px-3 py-1 rounded-full">{campaigns.length} activas</span>
+            <h2 className="font-playfair text-3xl text-brand-black">Aktive Kampagnen</h2>
+            <span className="font-dm-sans text-xs text-gray-400 bg-white border border-gray-100 px-3 py-1 rounded-full">{campaigns.length} aktiv</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {campaigns.map((c) => (
@@ -135,7 +135,7 @@ export default async function HackPage() {
                   <h3 className="font-playfair text-xl text-brand-black">{c.brand_name}</h3>
                   <div className="text-right shrink-0">
                     <p className="font-dm-sans font-bold text-xl text-brand-pink">{c.commission_rate}%</p>
-                    <p className="font-dm-sans text-xs text-gray-400">Comisión</p>
+                    <p className="font-dm-sans text-xs text-gray-400">Provision</p>
                   </div>
                 </div>
                 {c.description && (
@@ -146,23 +146,23 @@ export default async function HackPage() {
                     <svg className="w-4 h-4 text-brand-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    Solo miembros
+                    Nur Mitglieder
                   </button>
                   <div className="absolute -top-1 -right-1">
-                    <span className="font-dm-sans text-xs font-bold bg-brand-pink text-white px-2 py-0.5 rounded-full">Miembros</span>
+                    <span className="font-dm-sans text-xs font-bold bg-brand-pink text-white px-2 py-0.5 rounded-full">Mitglieder</span>
                   </div>
                 </div>
               </div>
             ))}
           </div>
           {campaigns.length === 0 && (
-            <p className="text-center text-gray-400 py-8 font-dm-sans">No hay campañas activas en este momento.</p>
+            <p className="text-center text-gray-400 py-8 font-dm-sans">Derzeit keine aktiven Kampagnen.</p>
           )}
         </section>
 
         {/* Strategy Preview */}
         <section className="mb-12">
-          <h2 className="font-playfair text-3xl text-brand-black mb-5">Mi Estrategia</h2>
+          <h2 className="font-playfair text-3xl text-brand-black mb-5">Meine Strategie</h2>
           <div className="relative rounded-2xl overflow-hidden">
             <div className="filter blur-sm pointer-events-none select-none" aria-hidden="true">
               <div className="bg-white rounded-2xl border border-brand-pink/20 p-6">
@@ -171,7 +171,7 @@ export default async function HackPage() {
                     <h3 className="font-playfair text-2xl text-brand-black">Collagen Eye Patches</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="font-dm-sans text-xs bg-brand-light-pink text-brand-green px-2 py-0.5 rounded-full">Beauty</span>
-                      <span className="font-dm-sans text-xs font-bold text-brand-pink">32% Comisión</span>
+                      <span className="font-dm-sans text-xs font-bold text-brand-pink">32% Provision</span>
                     </div>
                   </div>
                   <span className="font-dm-sans text-xs font-bold bg-amber-100 text-amber-700 px-3 py-1 rounded-full border border-amber-300">Hero</span>
@@ -179,34 +179,34 @@ export default async function HackPage() {
                 <div className="grid grid-cols-3 gap-4 border-t border-gray-50 pt-4">
                   <div className="text-center">
                     <p className="font-playfair text-2xl font-bold text-brand-black">2</p>
-                    <p className="font-dm-sans text-xs text-gray-400">Videos / Día</p>
+                    <p className="font-dm-sans text-xs text-gray-400">Videos / Tag</p>
                   </div>
                   <div className="text-center">
                     <p className="font-playfair text-2xl font-bold text-brand-black">3h</p>
-                    <p className="font-dm-sans text-xs text-gray-400">Live / Semana</p>
+                    <p className="font-dm-sans text-xs text-gray-400">Live / Woche</p>
                   </div>
                   <div className="text-center">
                     <p className="font-playfair text-2xl font-bold text-brand-green">$1,500</p>
-                    <p className="font-dm-sans text-xs text-gray-400">Meta GMV</p>
+                    <p className="font-dm-sans text-xs text-gray-400">GMV-Ziel</p>
                   </div>
                 </div>
                 <div className="mt-4 border-t border-gray-50 pt-4">
-                  <p className="font-dm-sans text-xs text-gray-400 uppercase tracking-widest mb-2">Nota de estrategia</p>
-                  <p className="font-dm-sans text-sm text-gray-600">Enfócate en transformaciones antes/después. Usa sonidos en tendencia. Publica entre 6–9pm para máximo alcance...</p>
+                  <p className="font-dm-sans text-xs text-gray-400 uppercase tracking-widest mb-2">Strategie-Notiz</p>
+                  <p className="font-dm-sans text-sm text-gray-600">Konzentriere dich auf Vorher/Nachher-Transformationen. Nutze Trend-Sounds. Poste zwischen 18–21 Uhr für maximale Reichweite...</p>
                 </div>
               </div>
             </div>
-            <LockOverlay label="Tu estrategia personalizada es exclusiva para miembros." />
+            <LockOverlay label="Deine persönliche Strategie ist exklusiv für Mitglieder." />
           </div>
         </section>
 
         {/* Leaderboard */}
         <section className="mb-12">
-          <h2 className="font-playfair text-3xl text-brand-black mb-2">Ranking de creadoras</h2>
-          <p className="font-dm-sans text-sm text-gray-500 mb-5">Las mejores creadoras de Papaya Social Club este mes.</p>
+          <h2 className="font-playfair text-3xl text-brand-black mb-2">Creator-Ranking</h2>
+          <p className="font-dm-sans text-sm text-gray-500 mb-5">Die besten Creators von Papaya Social Club diesen Monat.</p>
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             {topCreators.length === 0 ? (
-              <p className="text-center text-gray-400 py-8 font-dm-sans">Aún no hay datos del ranking.</p>
+              <p className="text-center text-gray-400 py-8 font-dm-sans">Noch keine Ranking-Daten vorhanden.</p>
             ) : (
               <div className="divide-y divide-gray-50">
                 {topCreators.map((creator, idx) => (
@@ -226,56 +226,56 @@ export default async function HackPage() {
             )}
           </div>
           <div className="mt-4 text-center">
-            <p className="font-dm-sans text-sm text-gray-500 mb-3">¿Quieres aparecer aquí?</p>
+            <p className="font-dm-sans text-sm text-gray-500 mb-3">Willst du hier erscheinen?</p>
             <a
               href={JOIN_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block font-dm-sans text-sm font-bold bg-brand-green text-white px-6 py-2.5 rounded-xl hover:bg-brand-green/90 transition"
             >
-              Únete ahora →
+              Jetzt beitreten →
             </a>
           </div>
         </section>
 
         {/* Dashboard Teaser */}
         <section className="mb-12">
-          <h2 className="font-playfair text-3xl text-brand-black mb-5">Tu Dashboard</h2>
+          <h2 className="font-playfair text-3xl text-brand-black mb-5">Dein Dashboard</h2>
           <div className="relative rounded-2xl overflow-hidden">
             <div className="filter blur-sm pointer-events-none select-none" aria-hidden="true">
               <div className="bg-white rounded-2xl border border-brand-pink/20 p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h1 className="font-playfair text-3xl text-brand-black">¡Hola, Sarah!</h1>
-                    <p className="font-dm-sans text-sm text-gray-500 mt-1">Marzo 2026</p>
+                    <h1 className="font-playfair text-3xl text-brand-black">Hallo, Sarah!</h1>
+                    <p className="font-dm-sans text-sm text-gray-500 mt-1">März 2026</p>
                   </div>
                   <span className="font-dm-sans font-bold text-sm px-3 py-1 rounded-full text-white bg-brand-pink">Rising</span>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-brand-light-pink rounded-xl p-4 text-center">
                     <p className="font-playfair text-3xl font-bold text-brand-green">$847</p>
-                    <p className="font-dm-sans text-xs text-gray-500 mt-1">Tu GMV</p>
+                    <p className="font-dm-sans text-xs text-gray-500 mt-1">Dein GMV</p>
                   </div>
                   <div className="bg-brand-light-pink rounded-xl p-4 text-center">
                     <p className="font-playfair text-3xl font-bold text-brand-black">3</p>
-                    <p className="font-dm-sans text-xs text-gray-500 mt-1">Productos activos</p>
+                    <p className="font-dm-sans text-xs text-gray-500 mt-1">Aktive Produkte</p>
                   </div>
                   <div className="bg-brand-light-pink rounded-xl p-4 text-center">
                     <p className="font-playfair text-3xl font-bold text-brand-black">2</p>
-                    <p className="font-dm-sans text-xs text-gray-500 mt-1">Campañas abiertas</p>
+                    <p className="font-dm-sans text-xs text-gray-500 mt-1">Offene Kampagnen</p>
                   </div>
                 </div>
               </div>
             </div>
-            <LockOverlay label="Tu dashboard personal — exclusivo para miembros." />
+            <LockOverlay label="Dein persönliches Dashboard — exklusiv für Mitglieder." />
           </div>
         </section>
 
         {/* CTA Banner */}
         <div className="bg-brand-green rounded-3xl p-8 text-center">
-          <h2 className="font-playfair text-4xl text-white mb-3">¿Lista para crecer?</h2>
+          <h2 className="font-playfair text-4xl text-white mb-3">Bereit zu wachsen?</h2>
           <p className="font-dm-sans text-brand-light-pink/80 text-lg mb-6">
-            Únete a Papaya Social Club y accede a todo.
+            Tritt Papaya Social Club bei und erhalte Zugang zu allem.
           </p>
           <a
             href={JOIN_URL}
@@ -283,7 +283,7 @@ export default async function HackPage() {
             rel="noopener noreferrer"
             className="inline-block font-dm-sans text-base font-bold bg-white text-brand-green px-8 py-3.5 rounded-2xl hover:bg-brand-light-pink transition shadow-lg"
           >
-            Únete a Papaya Social Club →
+            Papaya Social Club beitreten →
           </a>
         </div>
       </main>
@@ -292,7 +292,7 @@ export default async function HackPage() {
       <div className="fixed bottom-0 inset-x-0 z-50 bg-brand-black border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
           <p className="font-dm-sans text-sm text-white/70 truncate">
-            Estás viendo el Hack Portal — acceso gratis ☀️
+            Du siehst das Hack Portal — kostenloser Zugang ☀️
           </p>
           <a
             href={JOIN_URL}
@@ -300,7 +300,7 @@ export default async function HackPage() {
             rel="noopener noreferrer"
             className="font-dm-sans text-sm font-bold bg-brand-green text-white px-5 py-2 rounded-xl hover:bg-brand-green/90 transition shrink-0"
           >
-            Únete para acceso completo →
+            Vollzugang erhalten →
           </a>
         </div>
       </div>

@@ -71,7 +71,7 @@ function ConfirmForm() {
         })
         console.log('[auth/confirm] verifyOtp result — session:', !!data?.session, 'user:', data?.user?.email, 'error:', error?.message)
         if (error) {
-          done(false, `Enlace de invitación no válido: ${error.message}`)
+          done(false, `Einladungslink ungültig: ${error.message}`)
         }
         // Success is caught by onAuthStateChange
         return
@@ -86,7 +86,7 @@ function ConfirmForm() {
         })
         console.log('[auth/confirm] verifyOtp (legacy) result — session:', !!data?.session, 'user:', data?.user?.email, 'error:', error?.message)
         if (error) {
-          done(false, `Enlace de invitación no válido: ${error.message}`)
+          done(false, `Einladungslink ungültig: ${error.message}`)
         }
         return
       }
@@ -107,12 +107,12 @@ function ConfirmForm() {
           })
           console.log('[auth/confirm] setSession result — session:', !!data?.session, 'user:', data?.user?.email, 'error:', error?.message)
           if (error) {
-            done(false, `No se pudo establecer la sesión: ${error.message}`)
+            done(false, `Sitzung konnte nicht erstellt werden: ${error.message}`)
           } else if (data?.session) {
             done(true)
           }
         } else {
-          done(false, 'Enlace de invitación incompleto. Por favor solicita una nueva invitación.')
+          done(false, 'Einladungslink unvollständig. Bitte fordere eine neue Einladung an.')
         }
         return
       }
@@ -123,7 +123,7 @@ function ConfirmForm() {
         const { data, error } = await supabase.auth.exchangeCodeForSession(code)
         console.log('[auth/confirm] exchangeCodeForSession result — session:', !!data?.session, 'error:', error?.message)
         if (error) {
-          done(false, `Error en el intercambio de código: ${error.message}`)
+          done(false, `Fehler beim Code-Austausch: ${error.message}`)
         }
         return
       }
@@ -135,7 +135,7 @@ function ConfirmForm() {
       if (session) {
         done(true)
       } else {
-        done(false, 'No se encontró un enlace de invitación válido. Por favor solicita una nueva invitación.')
+        done(false, 'Kein gültiger Einladungslink gefunden. Bitte fordere eine neue Einladung an.')
       }
     }
 
@@ -150,7 +150,7 @@ function ConfirmForm() {
     const timeout = setTimeout(() => {
       if (!resolved.current) {
         console.error('[auth/confirm] Global timeout reached (20s)')
-        done(false, 'La confirmación tardó demasiado. Por favor intenta de nuevo o solicita una nueva invitación.')
+        done(false, 'Die Bestätigung hat zu lange gedauert. Bitte versuche es erneut oder fordere eine neue Einladung an.')
       }
     }, 20000)
 
@@ -165,11 +165,11 @@ function ConfirmForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden.')
+      setError('Die Passwörter stimmen nicht überein.')
       return
     }
     if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.')
+      setError('Das Passwort muss mindestens 8 Zeichen lang sein.')
       return
     }
 
@@ -184,7 +184,7 @@ function ConfirmForm() {
 
     if (!session) {
       console.error('[auth/confirm] No session when trying to set password')
-      setError('Sesión expirada. Por favor solicita una nueva invitación.')
+      setError('Sitzung abgelaufen. Bitte fordere eine neue Einladung an.')
       setLoading(false)
       return
     }
@@ -194,7 +194,7 @@ function ConfirmForm() {
 
     if (updateError) {
       console.error('[auth/confirm] updateUser error:', updateError)
-      setError(`Error: ${updateError.message}`)
+      setError(`Fehler: ${updateError.message}`)
       setLoading(false)
       return
     }
@@ -209,7 +209,7 @@ function ConfirmForm() {
     return (
       <div className="min-h-screen bg-brand-light-pink flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="font-dm-sans text-sm text-gray-500">Confirmando invitación…</p>
+          <p className="font-dm-sans text-sm text-gray-500">Einladung wird bestätigt…</p>
         </div>
       </div>
     )
@@ -232,11 +232,11 @@ function ConfirmForm() {
               Papaya Social Club
             </p>
             <h1 className="font-playfair text-4xl text-brand-green leading-tight">
-              {sessionReady ? '¡Bienvenida!' : 'Error'}
+              {sessionReady ? 'Willkommen!' : 'Fehler'}
             </h1>
             {sessionReady && (
               <p className="font-dm-sans text-gray-500 mt-2 text-sm">
-                Crea tu contraseña para comenzar.
+                Erstelle dein Passwort, um loszulegen.
               </p>
             )}
           </div>
@@ -254,7 +254,7 @@ function ConfirmForm() {
                 </details>
               )}
               <p className="text-center font-dm-sans text-xs text-gray-400">
-                Por favor contacta a tu agencia para una nueva invitación.
+                Bitte kontaktiere deine Agentur für eine neue Einladung.
               </p>
             </div>
           )}
@@ -264,7 +264,7 @@ function ConfirmForm() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="password" className="block text-sm font-dm-sans font-medium text-gray-700 mb-1.5">
-                  Nueva contraseña
+                  Neues Passwort
                 </label>
                 <input
                   id="password"
@@ -273,14 +273,14 @@ function ConfirmForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={8}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Mindestens 8 Zeichen"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-pink/40 focus:border-brand-pink font-dm-sans text-sm bg-gray-50 text-gray-900 placeholder-gray-400 transition"
                 />
               </div>
 
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-dm-sans font-medium text-gray-700 mb-1.5">
-                  Confirmar contraseña
+                  Passwort bestätigen
                 </label>
                 <input
                   id="confirmPassword"
@@ -288,7 +288,7 @@ function ConfirmForm() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  placeholder="Repetir contraseña"
+                  placeholder="Passwort wiederholen"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-pink/40 focus:border-brand-pink font-dm-sans text-sm bg-gray-50 text-gray-900 placeholder-gray-400 transition"
                 />
               </div>
@@ -305,14 +305,14 @@ function ConfirmForm() {
                 className="w-full py-3.5 rounded-xl font-dm-sans font-semibold text-sm text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] mt-2"
                 style={{ backgroundColor: '#1B5E3B' }}
               >
-                {loading ? 'Guardando...' : 'Establecer contraseña →'}
+                {loading ? 'Wird gespeichert...' : 'Passwort festlegen →'}
               </button>
             </form>
           )}
         </div>
 
         <p className="text-center text-xs text-gray-400 font-dm-sans mt-6">
-          © 2024 Papaya Social Club · Todos los derechos reservados
+          © 2024 Papaya Social Club · Alle Rechte vorbehalten
         </p>
       </div>
     </div>

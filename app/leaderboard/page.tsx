@@ -78,15 +78,15 @@ export default async function LeaderboardPage() {
                 {myRank}
               </div>
               <div>
-                <p className="font-dm-sans font-semibold text-sm text-brand-black">Tu posición</p>
-                <p className="font-dm-sans text-xs text-gray-400">#{myRank} out of {leaderboard.length}</p>
+                <p className="font-dm-sans font-semibold text-sm text-brand-black">Deine Position</p>
+                <p className="font-dm-sans text-xs text-gray-400">#{myRank} von {leaderboard.length}</p>
               </div>
             </div>
             <div className="text-right">
               <p className="font-playfair text-2xl font-bold text-brand-green">
                 ${creator.gmv.toLocaleString('en-US')}
               </p>
-              <p className="font-dm-sans text-xs text-gray-400">Tu GMV</p>
+              <p className="font-dm-sans text-xs text-gray-400">Dein GMV</p>
             </div>
           </div>
         )}
@@ -115,7 +115,7 @@ export default async function LeaderboardPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className={`font-dm-sans font-semibold text-sm truncate ${isMe ? 'text-brand-green' : 'text-brand-black'}`}>
                         {displayName(c)}
-                        {isMe && <span className="ml-1 font-dm-sans text-xs font-normal text-brand-green">(tú)</span>}
+                        {isMe && <span className="ml-1 font-dm-sans text-xs font-normal text-brand-green">(du)</span>}
                       </p>
                       <span
                         className="font-dm-sans text-xs font-bold px-2 py-0.5 rounded-full text-white"

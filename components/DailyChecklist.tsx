@@ -37,7 +37,7 @@ export default function DailyChecklist({ creatorId, strategyProducts, checklistE
         productId: sp.id,
         productName: name,
         field: 'video_posted',
-        label: `¿Publicaste tu video de ${name} hoy?`,
+        label: `Hast du dein ${name}-Video heute gepostet?`,
         done: entry?.video_posted ?? false,
       })
     }
@@ -46,7 +46,7 @@ export default function DailyChecklist({ creatorId, strategyProducts, checklistE
         productId: sp.id,
         productName: name,
         field: 'live_done',
-        label: `¿Hiciste live hoy? (meta ${sp.live_hours_per_week}h/semana — ${name})`,
+        label: `Hast du heute live gestreamt? (Ziel ${sp.live_hours_per_week}h/Woche — ${name})`,
         done: entry?.live_done ?? false,
       })
     }
@@ -77,9 +77,9 @@ export default function DailyChecklist({ creatorId, strategyProducts, checklistE
     <div className={`rounded-2xl border p-6 transition-colors ${allDone ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="font-dm-sans font-semibold text-brand-black text-base">Checklist diario</h3>
+          <h3 className="font-dm-sans font-semibold text-brand-black text-base">Tägliche Checkliste</h3>
           <p className={`font-dm-sans text-xs mt-0.5 ${allDone ? 'text-emerald-600' : 'text-amber-600'}`}>
-            {allDone ? '🎉 ¡Todo listo por hoy!' : 'Marca lo que completaste hoy.'}
+            {allDone ? '🎉 Alles erledigt für heute!' : 'Markiere, was du heute erledigt hast.'}
           </p>
         </div>
         <span className={`font-dm-sans text-xs font-semibold px-2.5 py-1 rounded-full ${allDone ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -102,7 +102,7 @@ export default function DailyChecklist({ creatorId, strategyProducts, checklistE
                 className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all disabled:opacity-50 ${
                   done ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300 hover:border-brand-green'
                 }`}
-                aria-label={done ? 'Marcar como pendiente' : 'Marcar como hecho'}
+                aria-label={done ? 'Als ausstehend markieren' : 'Als erledigt markieren'}
               >
                 {done && (
                   <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +118,7 @@ export default function DailyChecklist({ creatorId, strategyProducts, checklistE
         })}
       </div>
 
-      <p className="font-dm-sans text-xs text-gray-400 mt-3">Se reinicia cada día a medianoche.</p>
+      <p className="font-dm-sans text-xs text-gray-400 mt-3">Wird jeden Tag um Mitternacht zurückgesetzt.</p>
     </div>
   )
 }

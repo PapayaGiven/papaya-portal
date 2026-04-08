@@ -30,7 +30,7 @@ export default function LoginPage() {
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError) {
-      setError('Email o contraseña incorrectos. Inténtalo de nuevo.')
+      setError('E-Mail oder Passwort falsch. Bitte versuche es erneut.')
       setLoading(false)
       return
     }
@@ -52,33 +52,33 @@ export default function LoginPage() {
                 height={80}
               />
             </div>
-            <h1 className="font-playfair text-4xl text-brand-green leading-tight">Bienvenida de nuevo.</h1>
-            <p className="font-dm-sans text-gray-500 mt-2 text-sm">Tu dashboard te espera.</p>
+            <h1 className="font-playfair text-4xl text-brand-green leading-tight">Willkommen zurück.</h1>
+            <p className="font-dm-sans text-gray-500 mt-2 text-sm">Dein Dashboard wartet auf dich.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-dm-sans font-medium text-gray-700 mb-1.5">Email</label>
+              <label htmlFor="email" className="block text-sm font-dm-sans font-medium text-gray-700 mb-1.5">E-Mail</label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="tu@ejemplo.com"
+                placeholder="deine@email.com"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-pink/40 focus:border-brand-pink font-dm-sans text-sm bg-gray-50 text-gray-900 placeholder-gray-400 transition"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-dm-sans font-medium text-gray-700 mb-1.5">Contraseña</label>
+              <label htmlFor="password" className="block text-sm font-dm-sans font-medium text-gray-700 mb-1.5">Passwort</label>
               <input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                placeholder="••••��•••"
+                placeholder="••••••••"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-pink/40 focus:border-brand-pink font-dm-sans text-sm bg-gray-50 text-gray-900 placeholder-gray-400 transition"
               />
             </div>
@@ -95,17 +95,17 @@ export default function LoginPage() {
               className="w-full py-3.5 rounded-xl font-dm-sans font-semibold text-sm text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98] mt-2"
               style={{ backgroundColor: '#1B5E3B' }}
             >
-              {loading ? 'Iniciando sesión...' : 'Iniciar sesión →'}
+              {loading ? 'Anmeldung läuft...' : 'Anmelden →'}
             </button>
           </form>
 
           <p className="text-center text-xs text-gray-400 font-dm-sans mt-6">
-            ¿No tienes cuenta? Tu agencia te enviará una invitación.
+            Kein Konto? Deine Agentur wird dir eine Einladung senden.
           </p>
         </div>
 
         <p className="text-center text-xs text-gray-400 font-dm-sans mt-6">
-          © 2024 Papaya Social Club · Todos los derechos reservados
+          © 2024 Papaya Social Club · Alle Rechte vorbehalten
         </p>
       </div>
     </div>
