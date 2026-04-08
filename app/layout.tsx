@@ -15,8 +15,13 @@ const dmSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Papaya Social Club',
-  description: 'Die #1 Community für Latinas auf TikTok Shop',
+  title: 'Papaya Social Club — Deutschland',
+  description: 'Die #1 Community für Latina Creators auf TikTok Shop',
+  icons: {
+    icon: 'https://cgimvsmnfmpzpkakiguo.supabase.co/storage/v1/object/public/PSC%20LOGOS/Sun_green.png',
+    apple: 'https://cgimvsmnfmpzpkakiguo.supabase.co/storage/v1/object/public/PSC%20LOGOS/Sun_green.png',
+  },
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({
