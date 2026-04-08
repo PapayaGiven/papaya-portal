@@ -17,11 +17,19 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: 'Papaya Social Club — Deutschland',
   description: 'Die #1 Community für Latina Creators auf TikTok Shop',
+  manifest: '/manifest.json',
   icons: {
     icon: 'https://cgimvsmnfmpzpkakiguo.supabase.co/storage/v1/object/public/PSC%20LOGOS/Sun_green.png',
     apple: 'https://cgimvsmnfmpzpkakiguo.supabase.co/storage/v1/object/public/PSC%20LOGOS/Sun_green.png',
   },
-  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Papaya DE',
+  },
+  other: {
+    'theme-color': '#1B5E3B',
+  },
 }
 
 export default function RootLayout({
@@ -33,6 +41,15 @@ export default function RootLayout({
     <html lang="de" className={`${playfair.variable} ${dmSans.variable}`}>
       <body className="font-dm-sans antialiased bg-brand-light-pink min-h-screen">
         {children}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js');
+              });
+            }
+          `
+        }} />
       </body>
     </html>
   )
