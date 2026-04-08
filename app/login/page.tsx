@@ -52,6 +52,7 @@ export default function LoginPage() {
                 height={80}
               />
             </div>
+            <p className="font-dm-sans text-xs font-semibold text-white px-3 py-1 rounded-full inline-block mb-3" style={{ backgroundColor: '#1B5E3B' }}>Papaya Social Club — Deutschland 🇩🇪</p>
             <h1 className="font-playfair text-4xl text-brand-green leading-tight">Willkommen zurück.</h1>
             <p className="font-dm-sans text-gray-500 mt-2 text-sm">Dein Dashboard wartet auf dich.</p>
           </div>
