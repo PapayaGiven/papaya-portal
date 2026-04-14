@@ -1291,7 +1291,12 @@ function SettingsTab({ settings }: { settings: SiteSettings | null }) {
     calls_per_month_elite: settings?.calls_per_month_elite ?? 4,
     booking_link_pro: settings?.booking_link_pro ?? '',
     booking_link_elite: settings?.booking_link_elite ?? 'https://calendar.app.google/bW5ZsKF9wbDrLVF6A',
+    google_sheets_url: settings?.google_sheets_url ?? '',
+    booking_link_initiation: settings?.booking_link_initiation ?? '',
+    booking_link_foundation: settings?.booking_link_foundation ?? '',
   })
+  const [syncing, setSyncing] = useState(false)
+  const [lastSynced, setLastSynced] = useState<string | null>(settings?.last_synced_at ?? null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -1361,6 +1366,14 @@ function SettingsTab({ settings }: { settings: SiteSettings | null }) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             <div>
+              <p className="font-dm-sans text-xs font-semibold text-gray-500 mb-1">Booking link (Initiation)</p>
+              <input value={form.booking_link_initiation} onChange={(e) => setForm((f) => ({ ...f, booking_link_initiation: e.target.value }))} placeholder="https://calendar..." className="input-field w-full" />
+            </div>
+            <div>
+              <p className="font-dm-sans text-xs font-semibold text-gray-500 mb-1">Booking link (Foundation)</p>
+              <input value={form.booking_link_foundation} onChange={(e) => setForm((f) => ({ ...f, booking_link_foundation: e.target.value }))} placeholder="https://calendar..." className="input-field w-full" />
+            </div>
+            <div>
               <p className="font-dm-sans text-xs font-semibold text-gray-500 mb-1">Default booking link (Pro)</p>
               <input value={form.booking_link_pro} onChange={(e) => setForm((f) => ({ ...f, booking_link_pro: e.target.value }))} placeholder="https://calendar..." className="input-field w-full" />
             </div>
@@ -1377,6 +1390,9 @@ function SettingsTab({ settings }: { settings: SiteSettings | null }) {
                 ...form,
                 booking_link_pro: form.booking_link_pro || null,
                 booking_link_elite: form.booking_link_elite || null,
+                google_sheets_url: form.google_sheets_url || null,
+                booking_link_initiation: form.booking_link_initiation || null,
+                booking_link_foundation: form.booking_link_foundation || null,
               })
               if (r.error) fb(`Error: ${r.error}`)
               else fb('Settings saved')
@@ -1385,6 +1401,43 @@ function SettingsTab({ settings }: { settings: SiteSettings | null }) {
           >
             {isPending ? 'Saving...' : 'Save settings'}
           </button>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 mt-6">
+          <h3 className="font-dm-sans font-semibold text-sm text-brand-black mb-3">Google Sheets Product Sync</h3>
+          <div className="mb-4">
+            <p className="font-dm-sans text-xs font-semibold text-gray-500 mb-1">Google Sheets URL (published CSV)</p>
+            <input value={form.google_sheets_url} onChange={(e) => setForm((f) => ({ ...f, google_sheets_url: e.target.value }))} placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv" className="input-field w-full" />
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              disabled={syncing || !form.google_sheets_url}
+              onClick={async () => {
+                setSyncing(true)
+                try {
+                  const res = await fetch('/api/sync-products', { method: 'POST' })
+                  const json = await res.json()
+                  if (json.error) fb(`Sync error: ${json.error}`)
+                  else {
+                    fb(`Synced ${json.upserted} products`)
+                    setLastSynced(new Date().toISOString())
+                  }
+                } catch (e: unknown) {
+                  fb(`Sync failed: ${e instanceof Error ? e.message : 'Unknown error'}`)
+                } finally {
+                  setSyncing(false)
+                }
+              }}
+              className="font-dm-sans text-sm font-semibold bg-brand-black text-white px-5 py-2.5 rounded-xl hover:bg-brand-black/80 transition disabled:opacity-50"
+            >
+              {syncing ? 'Syncing...' : 'Sync Products'}
+            </button>
+            {lastSynced && (
+              <span className="font-dm-sans text-xs text-gray-400">
+                Last synced: {new Date(lastSynced).toLocaleString()}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

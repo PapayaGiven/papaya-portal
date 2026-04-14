@@ -467,6 +467,9 @@ export async function updateSettings(data: {
   calls_per_month_elite: number
   booking_link_pro: string | null
   booking_link_elite: string | null
+  google_sheets_url: string | null
+  booking_link_initiation: string | null
+  booking_link_foundation: string | null
 }): Promise<{ error?: string }> {
   const supabase = createAdminClient()
   // Upsert the single settings row

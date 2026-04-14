@@ -144,6 +144,10 @@ export interface SiteSettings {
   calls_per_month_elite: number
   booking_link_pro: string | null
   booking_link_elite: string | null
+  google_sheets_url: string | null
+  last_synced_at: string | null
+  booking_link_initiation: string | null
+  booking_link_foundation: string | null
 }
 
 export interface Announcement {
