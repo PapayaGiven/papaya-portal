@@ -34,6 +34,8 @@ export interface Product {
   tags: string[]
   created_at: string
   approved_for_initiation: boolean
+  showcase_link: string | null
+  sample_link: string | null
 }
 
 export interface Task {

@@ -144,6 +144,8 @@ export async function addProduct(data: {
   image_url: string | null
   product_link: string | null
   tags: string[]
+  showcase_link: string | null
+  sample_link: string | null
 }): Promise<{ error?: string }> {
   const supabase = createAdminClient()
   const { error } = await supabase.from('products').insert(data)
@@ -163,6 +165,8 @@ export async function updateProduct(
     image_url: string | null
     product_link: string | null
     tags: string[]
+    showcase_link: string | null
+    sample_link: string | null
   }>
 ): Promise<{ error?: string }> {
   const supabase = createAdminClient()
