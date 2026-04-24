@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import StrategyManager from '@/components/admin/StrategyManager'
 import {
   adminLogout,
-  addCreator, updateCreatorGMV, updateCreatorLevel, updateCreatorPersonalGoal, toggleCreatorActive, deleteCreator, updateCreatorEliteSettings, resendInvite,
+  addCreator, updateCreatorGMV, updateCreatorLevel, updateCreatorPersonalGoal, toggleCreatorActive, deleteCreator, updateCreatorEliteSettings, resendInvite, regenerateAccessCode,
   addProduct, updateProduct, deleteProduct, toggleProductExclusive, toggleProductInitiation,
   addCampaign, updateCampaign, updateCampaignSpots, toggleCampaignStatus, deleteCampaign,
   updateProductRequestStatus,
@@ -125,8 +125,13 @@ function CreatorsTab({ creators, products: _products }: { creators: Creator[]; p
   const [eliteForm, setEliteForm] = useState<{ whatsapp_number: string; mastermind_date: string; account_manager_name: string; account_manager_whatsapp: string; booking_link: string }>({ whatsapp_number: '', mastermind_date: '', account_manager_name: '', account_manager_whatsapp: '', booking_link: '' })
   const [showAdd, setShowAdd] = useState(false)
   const [addForm, setAddForm] = useState({ name: '', email: '' })
+  const [generatedCode, setGeneratedCode] = useState<{ name: string; code: string } | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  function copyToClipboard(text: string, label: string) {
+    navigator.clipboard.writeText(text).then(() => fb(`${label} copied!`))
+  }
 
   function openElite(c: Creator) {
     setExpandedElite(c.id)
@@ -152,13 +157,38 @@ function CreatorsTab({ creators, products: _products }: { creators: Creator[]; p
           onClick={() => setShowAdd(!showAdd)}
           className="font-dm-sans text-sm font-semibold bg-brand-green text-white px-4 py-2 rounded-xl hover:bg-brand-green/90 transition"
         >
-          {showAdd ? 'Cancel' : '+ Invite creator'}
+          {showAdd ? 'Cancel' : '+ Add creator'}
         </button>
       </div>
 
+      {generatedCode && (
+        <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-5 mb-5">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <h3 className="font-dm-sans font-bold text-base text-emerald-800">Creator created — share this code</h3>
+              <p className="font-dm-sans text-xs text-emerald-700/70 mt-0.5">
+                {generatedCode.name} can use this code at /onboarding to set up their account.
+              </p>
+            </div>
+            <button onClick={() => setGeneratedCode(null)} className="text-emerald-600/60 hover:text-emerald-800 text-lg leading-none shrink-0">×</button>
+          </div>
+          <div className="flex items-center gap-3">
+            <code className="font-dm-sans font-bold text-2xl tracking-widest text-emerald-900 bg-white border border-emerald-300 rounded-xl px-5 py-3">
+              {generatedCode.code}
+            </code>
+            <button
+              onClick={() => copyToClipboard(generatedCode.code, 'Code')}
+              className="font-dm-sans text-sm font-semibold bg-emerald-600 text-white px-4 py-2.5 rounded-xl hover:bg-emerald-700 transition"
+            >
+              Copy code
+            </button>
+          </div>
+        </div>
+      )}
+
       {showAdd && (
         <div className="bg-brand-light-pink border border-brand-pink/20 rounded-2xl p-5 mb-5">
-          <h3 className="font-dm-sans font-semibold text-sm text-brand-black mb-3">Invite new creator</h3>
+          <h3 className="font-dm-sans font-semibold text-sm text-brand-black mb-3">Add new creator</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               type="text"
@@ -180,11 +210,15 @@ function CreatorsTab({ creators, products: _products }: { creators: Creator[]; p
             onClick={() => startTransition(async () => {
               const r = await addCreator(addForm.name, addForm.email)
               if (r.error) fb(`Error: ${r.error}`)
-              else { fb('Creator invited!'); setAddForm({ name: '', email: '' }); setShowAdd(false) }
+              else {
+                fb('Creator created!')
+                if (r.access_code) setGeneratedCode({ name: addForm.name || addForm.email, code: r.access_code })
+                setAddForm({ name: '', email: '' }); setShowAdd(false)
+              }
             })}
             className="mt-3 font-dm-sans text-sm font-semibold bg-brand-green text-white px-5 py-2.5 rounded-xl hover:bg-brand-green/90 transition disabled:opacity-50"
           >
-            {isPending ? 'Sending...' : 'Send invitation'}
+            {isPending ? 'Saving...' : 'Create creator & generate code'}
           </button>
         </div>
       )}
@@ -195,20 +229,54 @@ function CreatorsTab({ creators, products: _products }: { creators: Creator[]; p
         <table className="w-full text-sm font-dm-sans">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
-              {['Name', 'Email', 'Level', 'GMV', 'Personal Goal', 'Status', 'Actions', 'Settings'].map((h) => (
+              {['Name', 'Email', 'Access Code', 'Onboarding', 'Level', 'GMV', 'Personal Goal', 'Status', 'Actions', 'Settings'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-xs text-gray-500 font-semibold uppercase tracking-wide whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {creators.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No creators yet.</td></tr>
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400">No creators yet.</td></tr>
             )}
             {creators.map((c) => (
               <>
               <tr key={c.id} className="bg-white hover:bg-gray-50/50 transition-colors">
                 <td className="px-4 py-3 font-medium text-brand-black whitespace-nowrap">{c.name || '–'}</td>
                 <td className="px-4 py-3 text-gray-500">{c.email}</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  {c.access_code ? (
+                    <div className="flex items-center gap-1.5">
+                      <code className="font-mono text-xs font-semibold text-brand-black bg-gray-100 px-2 py-1 rounded-lg">{c.access_code}</code>
+                      <button
+                        onClick={() => copyToClipboard(c.access_code!, 'Code')}
+                        className="text-xs text-gray-500 hover:text-brand-green px-1.5 py-1 rounded hover:bg-gray-100 transition"
+                        title="Copy"
+                      >📋</button>
+                      <button
+                        disabled={isPending}
+                        onClick={() => {
+                          if (confirm(`Regenerate access code for ${c.name || c.email}? The old code will stop working.`)) {
+                            startTransition(async () => {
+                              const r = await regenerateAccessCode(c.id)
+                              if (r.error) fb(`Error: ${r.error}`)
+                              else fb(`New code: ${r.access_code}`)
+                            })
+                          }
+                        }}
+                        className="text-xs text-amber-600 hover:text-amber-800 px-1.5 py-1 rounded hover:bg-amber-50 transition"
+                        title="Regenerate"
+                      >↻</button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-300">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${c.has_completed_onboarding ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${c.has_completed_onboarding ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                    {c.has_completed_onboarding ? 'Completed' : 'Pending'}
+                  </span>
+                </td>
                 <td className="px-4 py-3">
                   <select
                     value={c.level}
@@ -341,7 +409,7 @@ function CreatorsTab({ creators, products: _products }: { creators: Creator[]; p
               </tr>
               {expandedElite === c.id && (
                 <tr key={`${c.id}-elite`} className="bg-amber-50/50">
-                  <td colSpan={8} className="px-6 py-4">
+                  <td colSpan={10} className="px-6 py-4">
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-3">
                       <div>
                         <p className="font-dm-sans text-xs font-semibold text-gray-500 mb-1">WhatsApp (creator)</p>
@@ -756,12 +824,18 @@ function CampaignsTab({ campaigns, products }: { campaigns: Campaign[]; products
   const emptyForm = {
     brand_name: '', description: '', commission_rate: '', spots_left: '',
     deadline: '', min_level: 'Initiation' as CreatorLevel, status: 'active',
-    brand_logo_url: '', product_id: '', budget: '', product_link: '', sample_available: false,
+    brand_logo_url: '', product_id: '', product_ids: [] as string[], budget: '', product_link: '', sample_available: false,
   }
   const [form, setForm] = useState(emptyForm)
   const [editForm, setEditForm] = useState(emptyForm)
+  const [productSearch, setProductSearch] = useState('')
+  const [editProductSearch, setEditProductSearch] = useState('')
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  function toggleCampaignProduct(productId: string, current: string[], setter: (ids: string[]) => void) {
+    setter(current.includes(productId) ? current.filter((p) => p !== productId) : [...current, productId])
+  }
 
   function fb(msg: string) { setFeedback(msg); setTimeout(() => setFeedback(null), 4000) }
 
@@ -802,10 +876,6 @@ function CampaignsTab({ campaigns, products }: { campaigns: Campaign[]; products
               <label className="font-dm-sans text-xs font-semibold text-gray-500 mb-1 block">Brand Logo</label>
               <input type="file" accept="image/*" disabled={uploading} onChange={(e) => { if (e.target.files?.[0]) handleLogoUpload(e.target.files[0], 'add') }} className="input-field w-full text-xs" />
             </div>
-            <select value={form.product_id} onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))} className="input-field">
-              <option value="">Link product (optional)</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
             <input placeholder="Budget ($)" type="number" value={form.budget} onChange={(e) => setForm((f) => ({ ...f, budget: e.target.value }))} className="input-field" />
             <input placeholder="Product link (showcase)" value={form.product_link} onChange={(e) => setForm((f) => ({ ...f, product_link: e.target.value }))} className="input-field" />
             <label className="flex items-center gap-2 font-dm-sans text-sm text-gray-700 sm:col-span-2">
@@ -819,6 +889,56 @@ function CampaignsTab({ campaigns, products }: { campaigns: Campaign[]; products
               <img src={form.brand_logo_url} alt="Logo" className="h-10 object-contain rounded border border-gray-200 bg-white px-2 py-1" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
             </div>
           )}
+
+          {/* Linked products multi-select */}
+          <div className="mt-4">
+            <p className="font-dm-sans text-xs font-semibold text-gray-500 mb-2">Linked products</p>
+            {form.product_ids.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {form.product_ids.map((pid) => {
+                  const p = products.find((x) => x.id === pid)
+                  return (
+                    <span key={pid} className="inline-flex items-center gap-1.5 text-xs font-medium bg-brand-green/10 text-brand-green px-2.5 py-1 rounded-full">
+                      {p?.name || pid}
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, product_ids: f.product_ids.filter((id) => id !== pid) }))}
+                        className="hover:text-red-600 leading-none"
+                      >×</button>
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+            <input
+              type="text"
+              placeholder="Search products to add..."
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              className="input-field w-full"
+            />
+            {productSearch && (
+              <div className="mt-1 max-h-40 overflow-y-auto bg-white border border-gray-200 rounded-xl divide-y divide-gray-50">
+                {products
+                  .filter((p) => !form.product_ids.includes(p.id) && p.name.toLowerCase().includes(productSearch.toLowerCase()))
+                  .slice(0, 10)
+                  .map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        toggleCampaignProduct(p.id, form.product_ids, (ids) => setForm((f) => ({ ...f, product_ids: ids })))
+                        setProductSearch('')
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm font-dm-sans hover:bg-brand-light-pink transition"
+                    >
+                      {p.name} <span className="text-xs text-gray-400">{p.commission_rate}%</span>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+
           <button
             disabled={isPending || !form.brand_name || uploading}
             onClick={() => startTransition(async () => {
@@ -831,7 +951,8 @@ function CampaignsTab({ campaigns, products }: { campaigns: Campaign[]; products
                 min_level: form.min_level,
                 status: 'active',
                 brand_logo_url: form.brand_logo_url || null,
-                product_id: form.product_id || null,
+                product_id: form.product_ids[0] || null,
+                product_ids: form.product_ids,
                 budget: parseFloat(form.budget) || null,
                 product_link: form.product_link || null,
                 sample_available: form.sample_available,
@@ -840,6 +961,7 @@ function CampaignsTab({ campaigns, products }: { campaigns: Campaign[]; products
               else {
                 fb('Campaign created')
                 setForm(emptyForm)
+                setProductSearch('')
                 setShowAdd(false)
               }
             })}
@@ -929,6 +1051,7 @@ function CampaignsTab({ campaigns, products }: { campaigns: Campaign[]; products
                             status: c.status,
                             brand_logo_url: c.brand_logo_url ?? '',
                             product_id: c.product_id ?? '',
+                            product_ids: (c.campaign_products ?? []).map((cp) => cp.product_id),
                             budget: c.budget ? String(c.budget) : '',
                             product_link: c.product_link ?? '',
                             sample_available: c.sample_available,
@@ -1005,12 +1128,52 @@ function CampaignsTab({ campaigns, products }: { campaigns: Campaign[]; products
                           <img src={editForm.brand_logo_url} alt="Logo" className="h-8 object-contain rounded border border-gray-200 bg-white px-2 py-0.5 mt-1" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                         )}
                       </div>
-                      <div>
-                        <p className="font-dm-sans text-xs font-semibold text-gray-500 mb-1">Linked product</p>
-                        <select value={editForm.product_id} onChange={(e) => setEditForm((f) => ({ ...f, product_id: e.target.value }))} className="input-field w-full">
-                          <option value="">None</option>
-                          {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
+                      <div className="sm:col-span-2 lg:col-span-3">
+                        <p className="font-dm-sans text-xs font-semibold text-gray-500 mb-1">Linked products</p>
+                        {editForm.product_ids.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {editForm.product_ids.map((pid) => {
+                              const p = products.find((x) => x.id === pid)
+                              return (
+                                <span key={pid} className="inline-flex items-center gap-1.5 text-xs font-medium bg-brand-green/10 text-brand-green px-2.5 py-1 rounded-full">
+                                  {p?.name || pid}
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditForm((f) => ({ ...f, product_ids: f.product_ids.filter((id) => id !== pid) }))}
+                                    className="hover:text-red-600 leading-none"
+                                  >×</button>
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
+                        <input
+                          type="text"
+                          placeholder="Search products to add..."
+                          value={editProductSearch}
+                          onChange={(e) => setEditProductSearch(e.target.value)}
+                          className="input-field w-full"
+                        />
+                        {editProductSearch && (
+                          <div className="mt-1 max-h-40 overflow-y-auto bg-white border border-gray-200 rounded-xl divide-y divide-gray-50">
+                            {products
+                              .filter((p) => !editForm.product_ids.includes(p.id) && p.name.toLowerCase().includes(editProductSearch.toLowerCase()))
+                              .slice(0, 10)
+                              .map((p) => (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  onClick={() => {
+                                    toggleCampaignProduct(p.id, editForm.product_ids, (ids) => setEditForm((f) => ({ ...f, product_ids: ids })))
+                                    setEditProductSearch('')
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-sm font-dm-sans hover:bg-brand-light-pink transition"
+                                >
+                                  {p.name} <span className="text-xs text-gray-400">{p.commission_rate}%</span>
+                                </button>
+                              ))}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <p className="font-dm-sans text-xs font-semibold text-gray-500 mb-1">Budget ($)</p>
@@ -1044,7 +1207,8 @@ function CampaignsTab({ campaigns, products }: { campaigns: Campaign[]; products
                           min_level: editForm.min_level,
                           status: editForm.status,
                           brand_logo_url: editForm.brand_logo_url || null,
-                          product_id: editForm.product_id || null,
+                          product_id: editForm.product_ids[0] || null,
+                          product_ids: editForm.product_ids,
                           budget: parseFloat(editForm.budget) || null,
                           product_link: editForm.product_link || null,
                           sample_available: editForm.sample_available,

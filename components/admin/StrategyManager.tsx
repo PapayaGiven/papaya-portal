@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { Creator, Product, Campaign } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { saveStrategy, getStrategyForAdmin, StrategyProductInput, VideoInput } from '@/app/admin/actions'
@@ -55,10 +55,23 @@ export default function StrategyManager({ creators, products, campaigns }: Strat
   const [month, setMonth] = useState(defaultMonth.slice(0, 7))
   const [strategyProducts, setStrategyProducts] = useState<StrategyProductInput[]>([emptyProduct()])
   const [hashtagInputs, setHashtagInputs] = useState<string[]>([''])
+  const [productSearches, setProductSearches] = useState<string[]>([''])
+  const [productSearchDebounced, setProductSearchDebounced] = useState<string[]>([''])
   const [feedback, setFeedback] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [uploading, setUploading] = useState(false)
+
+  function setProductSearch(index: number, value: string) {
+    setProductSearches((prev) => prev.map((v, i) => i === index ? value : v))
+  }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setProductSearchDebounced(productSearches)
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [productSearches])
 
   function fb(msg: string) {
     setFeedback(msg)
@@ -98,8 +111,10 @@ export default function StrategyManager({ creators, products, campaigns }: Strat
         quick_checklist: (p.quick_checklist as string[]) ?? [],
         brief_url: (p.brief_url as string | null) ?? null,
       }))
-      setStrategyProducts(loaded.length > 0 ? loaded : [emptyProduct()])
-      setHashtagInputs(loaded.map((p) => p.hashtags.join(', ')))
+      const finalProducts = loaded.length > 0 ? loaded : [emptyProduct()]
+      setStrategyProducts(finalProducts)
+      setHashtagInputs(finalProducts.map((p) => p.hashtags.join(', ')))
+      setProductSearches(finalProducts.map(() => ''))
       fb(`Strategy loaded (${loaded.length} products)`)
     })
   }
@@ -117,11 +132,13 @@ export default function StrategyManager({ creators, products, campaigns }: Strat
   function addProduct() {
     setStrategyProducts((prev) => [...prev, emptyProduct()])
     setHashtagInputs((prev) => [...prev, ''])
+    setProductSearches((prev) => [...prev, ''])
   }
 
   function removeProduct(index: number) {
     setStrategyProducts((prev) => prev.filter((_, i) => i !== index))
     setHashtagInputs((prev) => prev.filter((_, i) => i !== index))
+    setProductSearches((prev) => prev.filter((_, i) => i !== index))
   }
 
   function addVideo(productIndex: number) {
@@ -260,20 +277,52 @@ export default function StrategyManager({ creators, products, campaigns }: Strat
             </div>
 
             <div className="p-5 space-y-4">
-              {/* Product dropdown */}
+              {/* Product searchable picker */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-dm-sans text-xs font-medium text-gray-500 mb-1">Product</label>
-                  <select
-                    value={sp.product_id}
-                    onChange={(e) => updateProduct(pi, { product_id: e.target.value })}
-                    className="input-field w-full"
-                  >
-                    <option value="">Select product...</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} ({p.commission_rate}%)</option>
-                    ))}
-                  </select>
+                  {sp.product_id ? (
+                    <div className="flex items-center gap-2 input-field bg-brand-light-pink/40">
+                      <span className="font-dm-sans text-sm text-brand-black flex-1 truncate">
+                        {products.find((p) => p.id === sp.product_id)?.name ?? sp.product_id}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { updateProduct(pi, { product_id: '' }); setProductSearch(pi, '') }}
+                        className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                      >× Change</button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={productSearches[pi] ?? ''}
+                        onChange={(e) => setProductSearch(pi, e.target.value)}
+                        placeholder="Type to search products..."
+                        className="input-field w-full"
+                      />
+                      {(productSearchDebounced[pi] ?? '').trim() && (
+                        <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg divide-y divide-gray-50">
+                          {products
+                            .filter((p) => p.name.toLowerCase().includes((productSearchDebounced[pi] ?? '').toLowerCase()))
+                            .slice(0, 12)
+                            .map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => { updateProduct(pi, { product_id: p.id }); setProductSearch(pi, '') }}
+                                className="w-full text-left px-3 py-2 text-sm font-dm-sans hover:bg-brand-light-pink transition"
+                              >
+                                {p.name} <span className="text-xs text-gray-400">({p.commission_rate}%)</span>
+                              </button>
+                            ))}
+                          {products.filter((p) => p.name.toLowerCase().includes((productSearchDebounced[pi] ?? '').toLowerCase())).length === 0 && (
+                            <p className="px-3 py-2 text-xs text-gray-400">No products found.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block font-dm-sans text-xs font-medium text-gray-500 mb-1">Linked campaign (optional)</label>

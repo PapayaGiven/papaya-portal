@@ -20,6 +20,8 @@ export interface Creator {
   account_manager_whatsapp: string | null
   personal_goal_notes: string | null
   booking_link: string | null
+  access_code: string | null
+  has_completed_onboarding: boolean
 }
 
 export interface Product {
@@ -66,6 +68,7 @@ export interface Campaign {
   product_link: string | null
   sample_available: boolean
   created_at: string
+  campaign_products?: { product_id: string }[]
 }
 
 export interface CampaignApplication {
