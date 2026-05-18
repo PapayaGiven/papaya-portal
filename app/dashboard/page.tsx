@@ -3,57 +3,76 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Creator, Campaign, Product, LEVEL_CONFIG, StrategyProduct, Announcement, SiteSettings } from '@/lib/types'
+import { Creator, Campaign, Product, LEVEL_CONFIG, StrategyProduct, SiteSettings, PapayaPick } from '@/lib/types'
 import Nav from '@/components/Nav'
-import SmartBanner from '@/components/SmartBanner'
 import GMVRing from '@/components/GMVRing'
-import CampaignCard from '@/components/CampaignCard'
-import ProductCard from '@/components/ProductCard'
-import ProductRequestButton from '@/components/ProductRequestButton'
 import LevelUpCelebration from '@/components/LevelUpCelebration'
 import InitiationProductModal from '@/components/InitiationProductModal'
-import PersonalGoalNotes from '@/components/PersonalGoalNotes'
 import DashboardAnnouncements from '@/components/DashboardAnnouncements'
-import { canSeeCampaigns, hasAccountManager, hasEliteFeatures } from '@/lib/levelAccess'
+import SmartAlert, { type Alert } from '@/components/SmartAlert'
+import VideoProgressBar from '@/components/VideoProgressBar'
+import DailyVideoPlan from '@/components/DailyVideoPlan'
+import { canSeeCampaigns } from '@/lib/levelAccess'
 
-function computeBanner(
-  creator: Creator,
-  campaigns: Campaign[],
-  products: Product[]
-): { type: 'urgent' | 'products' | 'gmv'; title: string; message: string } | null {
+function dailyTargetForStrategyProduct(sp: { videos_per_day: number | null; frequency_type?: string | null }): number {
+  const raw = sp.videos_per_day ?? 0
+  if (raw <= 0) return 0
+  return sp.frequency_type === 'week' ? Math.max(1, Math.ceil(raw / 7)) : raw
+}
+
+function pickAlert(input: {
+  campaigns: Campaign[]
+  creator: Creator
+  monthlyGoal: number
+  papayaPicks: PapayaPick[]
+  canSeePicks: boolean
+}): Alert | null {
+  const { campaigns, creator, monthlyGoal, papayaPicks, canSeePicks } = input
   const now = new Date()
 
-  const urgentCampaign = campaigns.find((c) => {
-    if (!c.deadline) return false
-    const deadline = new Date(c.deadline)
-    return deadline.getTime() - now.getTime() < 24 * 60 * 60 * 1000 && deadline > now
-  })
-  if (urgentCampaign) {
+  // 1. Campaign closing < 48h
+  const horizon = 48 * 60 * 60 * 1000
+  const closing = campaigns
+    .filter((c) => {
+      if (!c.deadline) return false
+      const ms = new Date(c.deadline).getTime() - now.getTime()
+      return ms > 0 && ms < horizon
+    })
+    .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())[0]
+  if (closing) {
+    const hours = Math.max(1, Math.round((new Date(closing.deadline!).getTime() - now.getTime()) / (60 * 60 * 1000)))
     return {
-      type: 'urgent',
-      title: 'Kampagne endet bald!',
-      message: `${urgentCampaign.brand_name} endet in weniger als 24 Stunden. Jetzt bewerben!`,
+      kind: 'campaign',
+      title: 'Kampagne endet bald',
+      message: `${closing.brand_name} endet in ${hours} Std. Jetzt bewerben.`,
+      href: `/campaigns/${closing.id}`,
+      cta: 'Bewerben →',
     }
   }
 
-  const highCommProduct = products.find(
-    (p) => p.commission_rate !== null && p.commission_rate > 25
-  )
-  if (highCommProduct) {
-    return {
-      type: 'products',
-      title: 'Top Produkt verfügbar!',
-      message: `${highCommProduct.name} bietet ${highCommProduct.commission_rate}% Provision. Jetzt starten!`,
+  // 2. GMV behind goal past day 15
+  if (now.getUTCDate() >= 15 && monthlyGoal > 0) {
+    const ratio = creator.gmv / monthlyGoal
+    if (ratio < 0.7) {
+      return {
+        kind: 'gmv-behind',
+        title: 'Unter deinem Ziel',
+        message: 'Du liegst unter deinem Monatsziel — dupliziere dein bestes Video oder frag deinen Manager.',
+        href: '/strategy',
+        cta: 'Strategie öffnen →',
+      }
     }
   }
 
-  const remaining = creator.gmv_target - creator.gmv
-  if (remaining > 0 && remaining < 100) {
-    const config = LEVEL_CONFIG[creator.level]
+  // 3. New Papaya Pick (Rising+)
+  if (canSeePicks && papayaPicks.length > 0) {
+    const top = papayaPicks[0]
     return {
-      type: 'gmv',
-      title: 'Fast geschafft!',
-      message: `Nur noch $${remaining.toFixed(0)} bis ${config.next ?? 'Elite'}. Weiter so!`,
+      kind: 'papaya-pick',
+      title: 'Neuer Papaya Pick',
+      message: `Neuer Papaya Pick verfügbar — ${top.product_name} hat diese Woche hohes Potenzial.`,
+      href: '/papaya-picks',
+      cta: 'Papaya Picks ansehen →',
     }
   }
 
@@ -76,7 +95,7 @@ export default async function DashboardPage() {
   const level = creator?.level ?? 'Initiation'
   const isInitiation = level === 'Initiation'
 
-  // Fetch active campaigns (only for Rising+)
+  // Active campaigns (Rising+)
   let campaigns: Campaign[] = []
   if (creator && canSeeCampaigns(level)) {
     const { data: campaignsData } = await supabase
@@ -87,7 +106,6 @@ export default async function DashboardPage() {
     campaigns = (campaignsData ?? []) as Campaign[]
   }
 
-  // Fetch products
   const admin = createAdminClient()
   let products: Product[] = []
   let initiationModalProducts: Product[] = []
@@ -121,12 +139,10 @@ export default async function DashboardPage() {
     products = (all ?? []) as Product[]
   }
 
-  // Strategy recap
+  // Strategy products for the daily plan
   const now = new Date()
   const monthDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-  const monthLabel = now.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
-  let strategyProducts: StrategyProduct[] = []
-
+  let strategyProducts: (StrategyProduct & { frequency_type?: string | null })[] = []
   if (creator) {
     const { data: stratData } = await supabase
       .from('strategies')
@@ -134,104 +150,114 @@ export default async function DashboardPage() {
       .eq('creator_id', creator.id)
       .eq('month', monthDate)
       .maybeSingle()
-
     if (stratData) {
       const { data: spData } = await supabase
         .from('strategy_products')
         .select('*, product:products(id, name, commission_rate)')
         .eq('strategy_id', stratData.id)
         .order('created_at')
-        .limit(4)
-      strategyProducts = (spData ?? []) as StrategyProduct[]
+      strategyProducts = (spData ?? []) as typeof strategyProducts
     }
   }
 
-  const totalVideosPerDay = strategyProducts.reduce((sum, p) => sum + (p.videos_per_day ?? 0), 0)
-  const topStratProducts = strategyProducts
-    .sort((a, b) => {
-      const order = { Hero: 0, Secondary: 1, Supporting: 2 }
-      return (order[a.priority] ?? 9) - (order[b.priority] ?? 9)
-    })
-    .slice(0, 2)
+  // Settings
+  const { data: settingsData } = await admin.from('settings').select('*').limit(1).maybeSingle()
+  const siteSettings = settingsData as SiteSettings | null
 
-  // Fetch announcements
-  let announcements: Announcement[] = []
+  // Videos posted today
+  let videosToday = 0
+  const completedByProductId: Record<string, number> = {}
+  if (creator) {
+    const today = new Date()
+    const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())).toISOString()
+    const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1)).toISOString()
+    const { data: vids } = await supabase
+      .from('creator_videos')
+      .select('product_id')
+      .eq('creator_id', creator.id)
+      .gte('created_at', start)
+      .lt('created_at', end)
+    for (const v of vids ?? []) {
+      videosToday++
+      if (v.product_id) completedByProductId[v.product_id] = (completedByProductId[v.product_id] ?? 0) + 1
+    }
+  }
+
+  const strategyTarget = strategyProducts.reduce(
+    (sum, sp) => sum + dailyTargetForStrategyProduct(sp),
+    0,
+  )
+  const dailyVideoTarget = strategyTarget
+
+  // Announcements
+  let announcements: { id: string; title: string; message: string; display_type: 'banner' | 'popup'; is_active: boolean; created_at: string }[] = []
   {
     const { data: announcementsData } = await admin
       .from('announcements')
       .select('*')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
-    announcements = (announcementsData ?? []) as Announcement[]
+    announcements = (announcementsData ?? []) as typeof announcements
   }
 
-  // Fetch top Papaya Pick for Rising+ creators (highlight teaser)
-  let topPick: { id: string; product_name: string; brand_name: string | null; niche: string | null; product_image_url: string | null; papaya_pick_score: number; growth_percentage: number; commission_rate: number | null } | null = null
-  let activePicksCount = 0
-  if (creator && !isInitiation) {
-    const { data: picks } = await admin
+  // Papaya Picks
+  const canSeePicks = level !== 'Initiation'
+  let papayaPicks: PapayaPick[] = []
+  if (creator && canSeePicks) {
+    const { data: picksData } = await admin
       .from('papaya_picks')
-      .select('id, product_name, brand_name, niche, product_image_url, papaya_pick_score, growth_percentage, commission_rate, min_level, is_active')
+      .select('*')
       .eq('is_active', true)
       .order('papaya_pick_score', { ascending: false })
-
-    const LEVEL_RANK = { Initiation: 0, Rising: 1, Pro: 2, Elite: 3 } as const
-    const myRank = LEVEL_RANK[level as keyof typeof LEVEL_RANK]
-    const visible = (picks ?? []).filter((p) => myRank >= LEVEL_RANK[p.min_level as keyof typeof LEVEL_RANK])
-    activePicksCount = visible.length
-    topPick = visible[0] ?? null
+      .limit(3)
+    papayaPicks = ((picksData ?? []) as PapayaPick[]).filter((p) => !p.expires_at || new Date(p.expires_at) > new Date())
   }
 
-  // Fetch settings
-  let settings: SiteSettings | null = null
-  {
-    const { data: settingsData } = await admin
-      .from('site_settings')
-      .select('*')
-      .single()
-    settings = settingsData as SiteSettings | null
-  }
-
-  const banner = creator ? computeBanner(creator, campaigns, products) : null
-  const levelConfig = creator ? LEVEL_CONFIG[creator.level] : null
+  // Monthly goal: prefer personal, else level threshold
   const personalGoal = creator?.personal_gmv_goal ?? 0
-  const personalProgress = personalGoal > 0 ? Math.min((creator?.gmv ?? 0) / personalGoal, 1) : 0
+  const fallbackLevelGoal = creator ? (LEVEL_CONFIG[creator.level].target ?? creator.gmv_target) : 0
+  const monthlyGoal = personalGoal > 0 ? personalGoal : fallbackLevelGoal
+
+  const alert = creator
+    ? pickAlert({ campaigns, creator, monthlyGoal, papayaPicks, canSeePicks })
+    : null
+
+  const topTwoProducts = [...products]
+    .filter((p) => p.commission_rate != null)
+    .sort((a, b) => (b.commission_rate ?? 0) - (a.commission_rate ?? 0))
+    .slice(0, 2)
+
   const firstName = creator?.name?.split(' ')[0] ?? null
 
-  // Determine booking link for this creator
-  const bookingLink = creator?.booking_link
-    ?? (level === 'Elite' ? settings?.booking_link_elite : level === 'Pro' ? settings?.booking_link_pro : null)
+  const levelKey = `booking_link_${level.toLowerCase()}` as keyof SiteSettings
+  const fallbackBooking = (siteSettings?.[levelKey] as string | null | undefined) ?? null
+  const bookingLink = creator?.booking_link || fallbackBooking || null
+
+  const levelConfig = creator ? LEVEL_CONFIG[creator.level] : null
+
+  const whatsappCommunity = process.env.NEXT_PUBLIC_WHATSAPP_COMMUNITY_URL ?? 'https://wa.me/'
+  const kajabiUrl = process.env.NEXT_PUBLIC_KAJABI_URL ?? '#'
 
   return (
     <div className="min-h-screen bg-brand-light-pink">
       <Nav level={creator?.level ?? null} />
 
-      {/* Level-up celebration (client component) */}
-      {creator && (
-        <LevelUpCelebration creatorId={creator.id} currentLevel={creator.level} />
-      )}
+      {creator && <LevelUpCelebration creatorId={creator.id} currentLevel={creator.level} />}
 
-      {/* Initiation product selection modal */}
       {showInitiationModal && creator && initiationModalProducts.length > 0 && (
-        <InitiationProductModal
-          products={initiationModalProducts}
-          creatorId={creator.id}
-        />
+        <InitiationProductModal products={initiationModalProducts} creatorId={creator.id} />
       )}
 
-      {/* Announcements */}
-      {announcements.length > 0 && (
-        <DashboardAnnouncements announcements={announcements} />
-      )}
+      {announcements.length > 0 && <DashboardAnnouncements announcements={announcements} />}
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Greeting row */}
-        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* 1. Header */}
+        <header className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <Image
             src="https://cgimvsmnfmpzpkakiguo.supabase.co/storage/v1/object/public/PSC%20LOGOS/Sun_pink.png"
             alt=""
-            width={180}
-            height={180}
+            width={140}
+            height={140}
             className="absolute right-0 top-1/2 -translate-y-1/2 opacity-10 pointer-events-none select-none"
             aria-hidden="true"
           />
@@ -243,7 +269,6 @@ export default async function DashboardPage() {
               {now.toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
-
           {creator && (
             <div className="flex items-center gap-2">
               <span className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-gray-400">Level</span>
@@ -255,353 +280,153 @@ export default async function DashboardPage() {
               </span>
             </div>
           )}
-        </div>
+        </header>
 
-        {/* Smart Banner */}
-        {banner && (
-          <div className="mb-6">
-            <SmartBanner banner={banner} />
-          </div>
-        )}
-
-        {/* Papaya Pick highlight — Rising+ only */}
-        {creator && topPick && (
-          <Link
-            href="/papaya-picks"
-            className="block mb-6 group"
-          >
-            <div className="bg-gradient-to-r from-amber-50 via-white to-brand-light-pink border border-amber-300/50 rounded-2xl p-5 flex items-center gap-4 hover:shadow-md transition">
-              <div className="w-16 h-16 rounded-xl overflow-hidden bg-amber-100 shrink-0 relative">
-                {topPick.product_image_url ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={topPick.product_image_url} alt={topPick.product_name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-amber-500 text-2xl">🌟</div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="font-dm-sans text-[10px] font-bold tracking-widest text-amber-700 uppercase">🌟 Papaya Pick der Woche</span>
-                  <span className="font-dm-sans text-[10px] font-bold bg-brand-pink text-white px-2 py-0.5 rounded-full">+{topPick.growth_percentage}% Wachstum</span>
-                </div>
-                <p className="font-dm-sans font-bold text-brand-black text-base leading-snug truncate">{topPick.product_name}</p>
-                <p className="font-dm-sans text-xs text-gray-500 truncate">
-                  {topPick.niche ? `${topPick.niche} · ` : ''}{topPick.commission_rate ?? '–'}% Provision · {activePicksCount} Picks aktiv
-                </p>
-              </div>
-              <span className="font-dm-sans text-sm font-bold text-brand-green group-hover:translate-x-1 transition shrink-0 hidden sm:inline">
-                Alle ansehen →
-              </span>
-            </div>
-          </Link>
-        )}
-
-        {/* No creator account yet */}
         {!creator && (
-          <div className="bg-white rounded-2xl border border-brand-pink/20 p-8 text-center mb-6">
+          <div className="bg-white rounded-2xl border border-brand-pink/20 p-8 text-center">
             <p className="text-4xl mb-3">🌴</p>
             <h2 className="font-playfair text-2xl text-brand-black mb-2">Dein Profil wird eingerichtet.</h2>
-            <p className="font-dm-sans text-gray-500 text-sm">Deine Agentur wird dein Creator-Profil bald aktivieren.</p>
+            <p className="font-dm-sans text-gray-500 text-sm">Deine Agentur aktiviert dein Creator-Profil bald.</p>
           </div>
         )}
 
         {creator && (
           <>
-            {/* Strategy + Community + Education */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              {/* Strategy Recap */}
-              <div className="sm:col-span-1 bg-white rounded-2xl border border-brand-pink/20 p-5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-gray-400">Meine Strategie</h3>
-                    <span className="font-dm-sans text-xs text-gray-400">{monthLabel}</span>
-                  </div>
-                  {strategyProducts.length > 0 ? (
-                    <div className="space-y-2">
-                      {topStratProducts.map((sp) => {
-                        const prod = sp.product as { name: string } | null
-                        return (
-                          <div key={sp.id} className="flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${sp.priority === 'Hero' ? 'bg-amber-400' : 'bg-brand-pink'}`} />
-                            <span className="font-dm-sans text-sm text-brand-black truncate">{prod?.name ?? '–'}</span>
-                          </div>
-                        )
-                      })}
-                      {totalVideosPerDay > 0 && (
-                        <p className="font-dm-sans text-xs text-gray-400 mt-2">
-                          {totalVideosPerDay} Videos/Tag insgesamt
-                        </p>
-                      )}
-                    </div>
+            {/* 2. GMV ring — monthly goal */}
+            <GMVRing
+              gmv={creator.gmv}
+              target={monthlyGoal}
+              level={creator.level}
+              nextLevel={null}
+              mode="monthly"
+            />
+
+            {/* 3. Videos progress bar */}
+            <VideoProgressBar done={videosToday} target={dailyVideoTarget} />
+
+            {/* 4. Dein Plan für heute */}
+            <DailyVideoPlan
+              items={strategyProducts.map((sp) => ({
+                id: sp.id,
+                product: sp.product ? { id: sp.product.id, name: sp.product.name } : null,
+                videos_per_day: sp.videos_per_day,
+                frequency_type: ((sp.frequency_type as 'day' | 'week' | null | undefined) ?? 'day'),
+                priority: sp.priority,
+              }))}
+              completedByProductId={completedByProductId}
+            />
+
+            {/* 5. Smart alert */}
+            {alert && <SmartAlert alert={alert} />}
+
+            {/* 6. Top Produkte — 2 cards */}
+            {topTwoProducts.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-playfair text-xl text-brand-black">Top Produkte</h2>
+                  <Link href="/products" className="font-dm-sans text-sm text-brand-green hover:underline">
+                    Alle ansehen →
+                  </Link>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {topTwoProducts.map((p) => (
+                    <Link
+                      key={p.id}
+                      href="/products"
+                      className="bg-white border border-gray-100 rounded-2xl p-3 flex flex-col gap-2 hover:shadow-sm transition"
+                    >
+                      <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden">
+                        {p.image_url ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-2xl">🛍️</div>
+                        )}
+                      </div>
+                      <p className="font-dm-sans text-sm font-semibold text-brand-black line-clamp-2 leading-snug">
+                        {p.name}
+                      </p>
+                      <p className="font-dm-sans text-lg font-bold text-brand-green">{p.commission_rate}%</p>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* 7. Success Guardian */}
+            {creator.account_manager_name && (
+              <section className="bg-white border border-gray-100 rounded-2xl p-5">
+                <p className="font-dm-sans text-xs font-bold uppercase tracking-widest text-brand-green mb-2">
+                  Dein Success Guardian
+                </p>
+                <p className="font-playfair text-2xl text-brand-black mb-3">{creator.account_manager_name}</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  {creator.account_manager_whatsapp && (
+                    <a
+                      href={`https://wa.me/${creator.account_manager_whatsapp.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-green text-white font-dm-sans text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-brand-green/90 transition"
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                      </svg>
+                      WhatsApp →
+                    </a>
+                  )}
+                  {bookingLink ? (
+                    <a
+                      href={bookingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex items-center justify-center bg-brand-green text-white font-dm-sans text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-brand-green/90 transition"
+                    >
+                      1:1-Call buchen →
+                    </a>
                   ) : (
-                    <p className="font-dm-sans text-sm text-gray-400">Noch keine Strategie für diesen Monat.</p>
+                    <div className="flex-1 inline-flex items-center justify-center bg-amber-50 border border-amber-200 text-amber-700 font-dm-sans text-xs px-4 py-2.5 rounded-xl text-center">
+                      Dein Buchungslink ist bald verfügbar
+                    </div>
                   )}
                 </div>
-                <Link href="/strategy" className="mt-4 font-dm-sans text-xs font-semibold text-brand-green hover:underline">
-                  Vollständige Strategie ansehen →
-                </Link>
-              </div>
+              </section>
+            )}
 
-              {/* Community */}
+            {/* 8. Community + Education */}
+            <div className="grid grid-cols-2 gap-3">
               <a
-                href={process.env.NEXT_PUBLIC_WHATSAPP_LINK ?? 'https://chat.whatsapp.com/EgJyUolGIcoIihVjjnuEKL'}
+                href={whatsappCommunity}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-brand-pink/10 hover:bg-brand-pink/20 border border-brand-pink/30 rounded-2xl p-5 flex flex-col justify-between transition group"
+                className="bg-brand-pink/10 hover:bg-brand-pink/20 border border-brand-pink/30 rounded-2xl p-4 flex flex-col gap-2 transition group"
               >
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-brand-pink/20 flex items-center justify-center mb-3">
-                    <svg className="w-5 h-5 text-brand-black" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                    </svg>
-                  </div>
-                  <h3 className="font-dm-sans font-semibold text-sm text-brand-black mb-1">Community</h3>
-                  <p className="font-dm-sans text-xs text-gray-500">WhatsApp Gruppe für Papaya Creators</p>
+                <div className="w-9 h-9 rounded-xl bg-brand-pink/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-brand-black" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                  </svg>
                 </div>
-                <span className="mt-3 font-dm-sans text-xs font-semibold text-brand-pink group-hover:underline">
-                  Gruppe beitreten →
+                <p className="font-dm-sans font-semibold text-sm text-brand-black">Community</p>
+                <span className="font-dm-sans text-xs font-semibold text-brand-pink group-hover:underline mt-auto">
+                  Der Gruppe beitreten →
                 </span>
               </a>
-
-              {/* Education */}
               <a
-                href={process.env.NEXT_PUBLIC_KAJABI_LINK ?? 'https://papaya-given.mykajabi.com'}
+                href={kajabiUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-brand-green/5 hover:bg-brand-green/10 border border-brand-green/20 rounded-2xl p-5 flex flex-col justify-between transition group"
+                className="bg-brand-green/5 hover:bg-brand-green/10 border border-brand-green/20 rounded-2xl p-4 flex flex-col gap-2 transition group"
               >
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-brand-green/10 flex items-center justify-center mb-3">
-                    <svg className="w-5 h-5 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                  </div>
-                  <h3 className="font-dm-sans font-semibold text-sm text-brand-black mb-1">Bildung</h3>
-                  <p className="font-dm-sans text-xs text-gray-500">Trainings und Ressourcen für TikTok Erfolg</p>
+                <div className="w-9 h-9 rounded-xl bg-brand-green/10 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
                 </div>
-                <span className="mt-3 font-dm-sans text-xs font-semibold text-brand-green group-hover:underline">
+                <p className="font-dm-sans font-semibold text-sm text-brand-black">Weiterbildung</p>
+                <span className="font-dm-sans text-xs font-semibold text-brand-green group-hover:underline mt-auto">
                   Kurse ansehen →
                 </span>
               </a>
             </div>
-
-            {/* 1:1 Booking Card */}
-            <div className="mb-6">
-              <div className={`bg-white rounded-2xl border p-5 ${(level === 'Pro' || level === 'Elite') ? 'border-brand-green/20' : 'border-gray-100'}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${(level === 'Pro' || level === 'Elite') ? 'bg-brand-green/10' : 'bg-gray-100'}`}>
-                    📞
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-dm-sans font-semibold text-sm text-brand-black">Dein 1:1 Call buchen</h3>
-                    {(level === 'Initiation' || level === 'Rising') ? (
-                      <p className="font-dm-sans text-xs text-gray-400 flex items-center gap-1">
-                        🔒 Verfügbar ab Pro Level
-                      </p>
-                    ) : bookingLink ? (
-                      <a
-                        href={bookingLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-dm-sans text-xs font-semibold text-brand-green hover:underline"
-                      >
-                        Call buchen →
-                      </a>
-                    ) : (
-                      <p className="font-dm-sans text-xs text-gray-400">Dein Buchungslink wird bald verfügbar sein</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* GMV Ring + Personal Goal / Account Manager / Elite */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <GMVRing
-                gmv={creator.gmv}
-                target={creator.gmv_target}
-                level={creator.level}
-                nextLevel={levelConfig?.next ?? null}
-              />
-
-              {/* Elite: Mastermind + WhatsApp */}
-              {hasEliteFeatures(level) ? (
-                <div className="flex flex-col gap-4">
-                  {creator.account_manager_name && (
-                    <div className="bg-white rounded-2xl border border-amber-200/60 p-5 flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-2xl shrink-0">👑</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-amber-600 mb-0.5">Dein Account Manager</p>
-                        <p className="font-dm-sans font-semibold text-brand-black">{creator.account_manager_name}</p>
-                        {creator.account_manager_whatsapp && (
-                          <a
-                            href={`https://wa.me/${creator.account_manager_whatsapp.replace(/\D/g, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 mt-2 font-dm-sans text-sm font-semibold text-brand-green hover:underline"
-                          >
-                            <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                            </svg>
-                            Per WhatsApp schreiben
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {creator.mastermind_date && (
-                    <div className="bg-white rounded-2xl border border-amber-200/60 p-5">
-                      <p className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-amber-600 mb-1">Nächstes Mastermind</p>
-                      <p className="font-playfair text-xl text-brand-black">
-                        {new Date(creator.mastermind_date).toLocaleDateString('de-DE', {
-                          weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
-                        })}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : hasAccountManager(level) ? (
-                /* Pro+: Account Manager card */
-                <div className="bg-white rounded-2xl border border-brand-green/20 p-6 flex flex-col gap-4">
-                  <div>
-                    <p className="font-dm-sans text-xs font-semibold uppercase tracking-widest text-brand-green mb-1">Dein Account Manager</p>
-                    {creator.account_manager_name ? (
-                      <>
-                        <p className="font-playfair text-2xl text-brand-black">{creator.account_manager_name}</p>
-                        {creator.account_manager_whatsapp && (
-                          <a
-                            href={`https://wa.me/${creator.account_manager_whatsapp.replace(/\D/g, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 mt-2 font-dm-sans text-sm font-semibold text-brand-green hover:underline"
-                          >
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                            </svg>
-                            Per WhatsApp schreiben
-                          </a>
-                        )}
-                      </>
-                    ) : (
-                      <p className="font-dm-sans text-sm text-gray-400">Dein Manager wird bald zugewiesen.</p>
-                    )}
-                  </div>
-                  <div className="mt-auto pt-3 border-t border-gray-50">
-                    <p className="font-dm-sans text-xs text-gray-400">Pro-Vorteil: monatliche 1:1 Strategie-Calls inklusive.</p>
-                  </div>
-                </div>
-              ) : (
-                /* Initiation / Rising: Personal Goal Card */
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-4">
-                  <div className="flex flex-col items-center gap-1">
-                    <h3 className="font-dm-sans font-semibold text-gray-500 text-xs uppercase tracking-wider">Mein persönliches Ziel</h3>
-                    <span className="font-dm-sans text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">Selbst gesetztes Ziel</span>
-                  </div>
-
-                  {personalGoal > 0 ? (
-                    <>
-                      <div className="relative" style={{ width: 180, height: 180 }}>
-                        <svg width="180" height="180" className="rotate-[-90deg]">
-                          <circle cx="90" cy="90" r="70" fill="none" stroke="#F3F4F6" strokeWidth="12" />
-                          <circle
-                            cx="90"
-                            cy="90"
-                            r="70"
-                            fill="none"
-                            stroke="#1B5E3B"
-                            strokeWidth="12"
-                            strokeLinecap="round"
-                            strokeDasharray={2 * Math.PI * 70}
-                            strokeDashoffset={2 * Math.PI * 70 * (1 - personalProgress)}
-                            style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="font-dm-sans font-bold text-2xl text-brand-black leading-none">
-                            ${creator.gmv.toLocaleString('en-US')}
-                          </span>
-                          <span className="font-dm-sans text-xs text-gray-400 mt-1">
-                            von ${personalGoal.toLocaleString('en-US')}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-dm-sans text-sm text-gray-600">
-                          {personalProgress >= 1 ? (
-                            <span className="font-semibold text-brand-green">🎯 Persönliches Ziel erreicht!</span>
-                          ) : (
-                            <>
-                              <span className="font-semibold text-brand-green">
-                                ${Math.max(personalGoal - creator.gmv, 0).toLocaleString('en-US')}
-                              </span>{' '}
-                              mehr um dein Ziel zu erreichen
-                            </>
-                          )}
-                        </p>
-                        <div className="mt-3 w-full bg-gray-100 rounded-full h-1.5">
-                          <div
-                            className="h-1.5 rounded-full bg-brand-green transition-all duration-1000"
-                            style={{ width: `${Math.min(personalProgress * 100, 100)}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-400 font-dm-sans mt-1">
-                          {Math.round(personalProgress * 100)}% deines persönlichen Ziels
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
-                      <p className="text-4xl mb-3">🎯</p>
-                      <p className="font-dm-sans text-sm text-gray-500 mb-1">Du hast noch kein persönliches Ziel.</p>
-                      <p className="font-dm-sans text-xs text-gray-400">Bitte deine Agentur, ein GMV-Ziel für dich festzulegen.</p>
-                    </div>
-                  )}
-
-                  {/* Personal Goal Notes */}
-                  <PersonalGoalNotes initialNotes={creator.personal_goal_notes} />
-                </div>
-              )}
-            </div>
-
-            {/* Campaigns (Rising+ only) */}
-            {canSeeCampaigns(level) && campaigns.length > 0 && (
-              <section className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-playfair text-2xl text-brand-black">Aktive Kampagnen</h2>
-                  <Link href="/campaigns" className="font-dm-sans text-sm text-brand-green hover:underline">
-                    Alle ansehen →
-                  </Link>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {campaigns.slice(0, 3).map((campaign) => (
-                    <CampaignCard key={campaign.id} campaign={campaign} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Products */}
-            {products.length > 0 && (
-              <section>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-playfair text-2xl text-brand-black">
-                    {isInitiation ? 'Deine Produkte' : 'Top Produkte'}
-                  </h2>
-                  <div className="flex items-center gap-3">
-                    <Link href="/products" className="font-dm-sans text-sm text-brand-green hover:underline">
-                      {isInitiation ? 'Produkte verwalten →' : 'Alle Produkte →'}
-                    </Link>
-                    <ProductRequestButton />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {products.map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
-              </section>
-            )}
           </>
         )}
       </main>

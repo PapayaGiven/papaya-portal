@@ -7,9 +7,11 @@ interface GMVRingProps {
   target: number
   level: string
   nextLevel: string | null
+  /** When `monthly`, the ring frames the target as the monthly goal. */
+  mode?: 'level' | 'monthly'
 }
 
-export default function GMVRing({ gmv, target, level, nextLevel }: GMVRingProps) {
+export default function GMVRing({ gmv, target, level, nextLevel, mode = 'level' }: GMVRingProps) {
   const [animated, setAnimated] = useState(false)
 
   const radius = 70
@@ -24,10 +26,10 @@ export default function GMVRing({ gmv, target, level, nextLevel }: GMVRingProps)
 
   const remaining = target - gmv
 
-  function formatUsd(val: number) {
-    return new Intl.NumberFormat('en-US', {
+  function formatEur(val: number) {
+    return new Intl.NumberFormat('de-DE', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
       maximumFractionDigits: 0,
     }).format(val)
   }
@@ -36,14 +38,13 @@ export default function GMVRing({ gmv, target, level, nextLevel }: GMVRingProps)
     <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-4">
       <div className="flex flex-col items-center gap-1">
         <h3 className="font-dm-sans font-semibold text-gray-500 text-xs uppercase tracking-wider">
-          Dein GMV
+          {mode === 'monthly' ? 'Dein Monatsziel' : 'Dein GMV'}
         </h3>
         <span className="font-dm-sans text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
           {level}
         </span>
       </div>
 
-      {/* SVG Ring */}
       <div className="relative" style={{ width: 180, height: 180 }}>
         <svg width="180" height="180" className="rotate-[-90deg]">
           <circle cx="90" cy="90" r={radius} fill="none" stroke="#F3F4F6" strokeWidth="12" />
@@ -63,27 +64,31 @@ export default function GMVRing({ gmv, target, level, nextLevel }: GMVRingProps)
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="font-dm-sans font-bold text-2xl text-brand-black leading-none">
-            {formatUsd(gmv)}
+            {formatEur(gmv)}
           </span>
           <span className="font-dm-sans text-xs text-gray-400 mt-1">
-            von {formatUsd(target)}
+            von {formatEur(target)}
           </span>
         </div>
       </div>
 
       <div className="text-center">
-        {nextLevel ? (
+        {mode === 'monthly' ? (
+          progress >= 1 ? (
+            <p className="font-dm-sans text-sm font-semibold text-brand-green">🎯 Monatsziel erreicht!</p>
+          ) : (
+            <p className="font-dm-sans text-sm text-gray-600">
+              <span className="font-semibold text-brand-green">{formatEur(Math.max(remaining, 0))}</span>{' '}
+              noch zu deinem Monatsziel
+            </p>
+          )
+        ) : nextLevel ? (
           <p className="font-dm-sans text-sm text-gray-600">
-            <span className="font-semibold text-brand-green">
-              {formatUsd(Math.max(remaining, 0))}
-            </span>{' '}
-            noch bis{' '}
-            <span className="font-semibold">{nextLevel}</span>
+            <span className="font-semibold text-brand-green">{formatEur(Math.max(remaining, 0))}</span>{' '}
+            noch bis <span className="font-semibold">{nextLevel}</span>
           </p>
         ) : (
-          <p className="font-dm-sans text-sm text-amber-600 font-semibold">
-            🏆 Höchstes Level erreicht!
-          </p>
+          <p className="font-dm-sans text-sm text-amber-600 font-semibold">🏆 Höchstes Level erreicht!</p>
         )}
 
         <div className="mt-3 w-full bg-gray-100 rounded-full h-1.5">
@@ -93,7 +98,7 @@ export default function GMVRing({ gmv, target, level, nextLevel }: GMVRingProps)
           />
         </div>
         <p className="text-xs text-gray-400 font-dm-sans mt-1">
-          {Math.round(progress * 100)}% zum nächsten Level
+          {Math.round(progress * 100)}% {mode === 'monthly' ? 'deines Ziels' : 'zum nächsten Level'}
         </p>
       </div>
     </div>
