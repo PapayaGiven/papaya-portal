@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import { createAdminClient } from '@/lib/supabase/admin'
+import HackProductBrowser from '@/components/HackProductBrowser'
 
 const JOIN_URL = process.env.NEXT_PUBLIC_JOIN_URL ?? 'https://papaya-given.mykajabi.com/offers/QzqH444d'
 
@@ -29,15 +30,23 @@ function LockOverlay({ label = 'Nur für Mitglieder — Tritt bei, um freizuscha
 export default async function HackPage() {
   const supabase = createAdminClient()
 
-  const [productsRes, campaignsRes, creatorsRes] = await Promise.all([
-    supabase.from('products').select('*').order('commission_rate', { ascending: false }).limit(6),
+  const [productsRes, campaignsRes, creatorsRes, picksRes] = await Promise.all([
+    supabase.from('products').select('*').order('commission_rate', { ascending: false }),
     supabase.from('campaigns').select('*').eq('status', 'active').limit(4),
     supabase.from('creators').select('name, gmv').order('gmv', { ascending: false }).limit(5),
+    supabase
+      .from('papaya_picks')
+      .select('id, niche, papaya_pick_score')
+      .eq('is_active', true)
+      .order('papaya_pick_score', { ascending: false })
+      .limit(3),
   ])
 
   const products = productsRes.data ?? []
   const campaigns = campaignsRes.data ?? []
   const topCreators = creatorsRes.data ?? []
+  const activePicksCount = picksRes.data?.length ?? 0
+  const picksNiches = Array.from(new Set((picksRes.data ?? []).map((p) => p.niche).filter(Boolean))) as string[]
 
   return (
     <div className="min-h-screen bg-brand-light-pink">
@@ -90,36 +99,69 @@ export default async function HackPage() {
           </a>
         </div>
 
-        {/* Top Products */}
+        {/* Papaya Picks — Locked FOMO Teaser */}
+        <section className="mb-12">
+          <div className="relative rounded-3xl overflow-hidden border border-amber-300/40 bg-gradient-to-br from-amber-50 via-white to-brand-light-pink p-8">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="font-dm-sans text-xs font-bold tracking-widest text-amber-600 uppercase">🌟 Papaya Picks</span>
+              <span className="font-dm-sans text-xs font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">Bevor alle anderen</span>
+            </div>
+            <h2 className="font-playfair text-3xl sm:text-4xl text-brand-black mb-3 max-w-2xl">
+              Wir identifizieren Produkte die <span className="italic">explodieren</span> — mit wenigen Affiliates noch.
+            </h2>
+            <p className="font-dm-sans text-base text-gray-600 max-w-2xl mb-5">
+              Hohe Nachfrage, wenig Konkurrenz, frische Provisionen. Die Ersten gewinnen am meisten.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="relative bg-white border border-gray-100 rounded-2xl p-4 overflow-hidden">
+                  <div className="filter blur-md pointer-events-none select-none" aria-hidden="true">
+                    <div className="w-full aspect-square bg-gradient-to-br from-amber-200 via-brand-pink to-brand-green rounded-xl mb-3" />
+                    <p className="font-dm-sans font-bold text-brand-black text-sm">Produkt #{i}</p>
+                    <p className="font-dm-sans text-xs text-gray-400">Score 9{i}</p>
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-amber-600/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="font-dm-sans text-sm font-semibold text-brand-black mb-1">
+                  {activePicksCount > 0
+                    ? `${activePicksCount} aktive Picks gerade verfügbar.`
+                    : 'Neue Picks landen jede Woche.'}
+                </p>
+                {picksNiches.length > 0 && (
+                  <p className="font-dm-sans text-xs text-gray-500">In Nischen: {picksNiches.slice(0, 4).join(' · ')}</p>
+                )}
+              </div>
+              <a
+                href={JOIN_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center font-dm-sans text-sm font-bold bg-brand-green text-white px-6 py-3 rounded-2xl hover:bg-brand-green/90 transition shadow-lg shrink-0"
+              >
+                Papaya Picks freischalten →
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* Products Browser */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-playfair text-3xl text-brand-black">Top-Produkte</h2>
-            <span className="font-dm-sans text-xs text-gray-400 bg-white border border-gray-100 px-3 py-1 rounded-full">{products.length} Produkte</span>
+            <div>
+              <h2 className="font-playfair text-3xl text-brand-black">Produkt-Katalog</h2>
+              <p className="font-dm-sans text-sm text-gray-500 mt-1">Stöbere durch alle Produkte. Filtern nach Nische, suchen nach Marke.</p>
+            </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {products.map((p) => (
-              <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-2">
-                {p.niche && (
-                  <span className="font-dm-sans text-xs font-medium bg-brand-light-pink text-brand-green px-2 py-0.5 rounded-full self-start">
-                    {p.niche}
-                  </span>
-                )}
-                {p.is_exclusive && (
-                  <span className="font-dm-sans text-xs font-bold bg-brand-black text-white px-2 py-0.5 rounded-full self-start tracking-wide">
-                    EXKLUSIV
-                  </span>
-                )}
-                <p className="font-dm-sans font-semibold text-brand-black text-sm leading-snug">{p.name}</p>
-                <p className="font-dm-sans font-bold text-xl text-brand-pink leading-none">
-                  {p.commission_rate}%
-                </p>
-                <p className="font-dm-sans text-xs text-gray-400">Provision</p>
-              </div>
-            ))}
-          </div>
-          {products.length === 0 && (
-            <p className="text-center text-gray-400 py-8 font-dm-sans">Produkte folgen in Kürze.</p>
-          )}
+          <HackProductBrowser products={products} />
         </section>
 
         {/* Campaigns */}

@@ -165,6 +165,23 @@ export default async function DashboardPage() {
     announcements = (announcementsData ?? []) as Announcement[]
   }
 
+  // Fetch top Papaya Pick for Rising+ creators (highlight teaser)
+  let topPick: { id: string; product_name: string; brand_name: string | null; niche: string | null; product_image_url: string | null; papaya_pick_score: number; growth_percentage: number; commission_rate: number | null } | null = null
+  let activePicksCount = 0
+  if (creator && !isInitiation) {
+    const { data: picks } = await admin
+      .from('papaya_picks')
+      .select('id, product_name, brand_name, niche, product_image_url, papaya_pick_score, growth_percentage, commission_rate, min_level, is_active')
+      .eq('is_active', true)
+      .order('papaya_pick_score', { ascending: false })
+
+    const LEVEL_RANK = { Initiation: 0, Rising: 1, Pro: 2, Elite: 3 } as const
+    const myRank = LEVEL_RANK[level as keyof typeof LEVEL_RANK]
+    const visible = (picks ?? []).filter((p) => myRank >= LEVEL_RANK[p.min_level as keyof typeof LEVEL_RANK])
+    activePicksCount = visible.length
+    topPick = visible[0] ?? null
+  }
+
   // Fetch settings
   let settings: SiteSettings | null = null
   {
@@ -245,6 +262,38 @@ export default async function DashboardPage() {
           <div className="mb-6">
             <SmartBanner banner={banner} />
           </div>
+        )}
+
+        {/* Papaya Pick highlight — Rising+ only */}
+        {creator && topPick && (
+          <Link
+            href="/papaya-picks"
+            className="block mb-6 group"
+          >
+            <div className="bg-gradient-to-r from-amber-50 via-white to-brand-light-pink border border-amber-300/50 rounded-2xl p-5 flex items-center gap-4 hover:shadow-md transition">
+              <div className="w-16 h-16 rounded-xl overflow-hidden bg-amber-100 shrink-0 relative">
+                {topPick.product_image_url ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={topPick.product_image_url} alt={topPick.product_name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-amber-500 text-2xl">🌟</div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="font-dm-sans text-[10px] font-bold tracking-widest text-amber-700 uppercase">🌟 Papaya Pick der Woche</span>
+                  <span className="font-dm-sans text-[10px] font-bold bg-brand-pink text-white px-2 py-0.5 rounded-full">+{topPick.growth_percentage}% Wachstum</span>
+                </div>
+                <p className="font-dm-sans font-bold text-brand-black text-base leading-snug truncate">{topPick.product_name}</p>
+                <p className="font-dm-sans text-xs text-gray-500 truncate">
+                  {topPick.niche ? `${topPick.niche} · ` : ''}{topPick.commission_rate ?? '–'}% Provision · {activePicksCount} Picks aktiv
+                </p>
+              </div>
+              <span className="font-dm-sans text-sm font-bold text-brand-green group-hover:translate-x-1 transition shrink-0 hidden sm:inline">
+                Alle ansehen →
+              </span>
+            </div>
+          </Link>
         )}
 
         {/* No creator account yet */}

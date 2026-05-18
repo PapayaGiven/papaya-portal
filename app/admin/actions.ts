@@ -698,3 +698,52 @@ export async function updateViolationNotes(id: string, admin_notes: string): Pro
   await supabase.from('violations').update({ admin_notes }).eq('id', id)
   revalidatePath('/admin')
 }
+
+// ── Papaya Picks ──────────────────────────────────────────────────────────────
+
+type PapayaPickInput = {
+  product_name: string
+  brand_name?: string | null
+  niche?: string | null
+  commission_rate?: number | null
+  product_link?: string | null
+  sample_link?: string | null
+  product_image_url?: string | null
+  units_sold_this_week?: number
+  growth_percentage?: number
+  affiliates_count?: number
+  videos_count?: number
+  why_its_a_pick?: string | null
+  example_video_url?: string | null
+  min_level?: 'Initiation' | 'Rising' | 'Pro' | 'Elite'
+  is_active?: boolean
+  expires_at?: string | null
+}
+
+export async function addPapayaPick(input: PapayaPickInput): Promise<{ error?: string }> {
+  if (!input.product_name?.trim()) return { error: 'Product name required' }
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('papaya_picks').insert(input)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  revalidatePath('/papaya-picks')
+  return {}
+}
+
+export async function updatePapayaPick(id: string, patch: Partial<PapayaPickInput>): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('papaya_picks').update(patch).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  revalidatePath('/papaya-picks')
+  return {}
+}
+
+export async function deletePapayaPick(id: string): Promise<{ error?: string }> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('papaya_picks').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  revalidatePath('/papaya-picks')
+  return {}
+}

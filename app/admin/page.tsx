@@ -28,6 +28,7 @@ export default async function AdminPage() {
     creatorRewardsRes,
     settingsRes,
     violationsRes,
+    papayaPicksRes,
   ] = await Promise.all([
     supabase
       .from('creators')
@@ -77,6 +78,10 @@ export default async function AdminPage() {
       .from('violations')
       .select('*, creator:creators(name, email)')
       .order('created_at', { ascending: false }),
+    supabase
+      .from('papaya_picks')
+      .select('*')
+      .order('papaya_pick_score', { ascending: false }),
   ])
 
   return (
@@ -96,6 +101,7 @@ export default async function AdminPage() {
       settings={settingsRes.data ?? null}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       violations={(violationsRes.data ?? []) as any}
+      papayaPicks={papayaPicksRes.data ?? []}
     />
   )
 }

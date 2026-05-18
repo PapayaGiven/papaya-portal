@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Creator, Product, Campaign, CreatorLevel, Announcement, LevelRow, RewardRow, Violation, SiteSettings } from '@/lib/types'
+import { Creator, Product, Campaign, CreatorLevel, Announcement, LevelRow, RewardRow, Violation, SiteSettings, PapayaPick } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import StrategyManager from '@/components/admin/StrategyManager'
 import {
@@ -17,6 +17,7 @@ import {
   addReward, deleteReward, confirmRewardReceived,
   updateSettings,
   updateViolationStatus, updateViolationNotes,
+  addPapayaPick, updatePapayaPick, deletePapayaPick,
 } from '@/app/admin/actions'
 
 async function uploadToStorage(bucket: string, file: File): Promise<string> {
@@ -84,6 +85,7 @@ interface AdminPanelProps {
   creatorRewards: CreatorRewardRow[]
   settings: SiteSettings | null
   violations: ViolationRow[]
+  papayaPicks: PapayaPick[]
 }
 
 const LEVELS: CreatorLevel[] = ['Initiation', 'Rising', 'Pro', 'Elite']
@@ -117,8 +119,18 @@ function Feedback({ msg }: { msg: string | null }) {
 }
 
 // ── Creators Tab ──────────────────────────────────────────────────────────────
+// New props (creatorRewards / productRequests / violations) are accepted
+// so the rebuilt 8-sub-tab profile can read them — wiring to per-creator
+// sub-tabs lands in a follow-up session. For now they're stashed under
+// _ so the existing UI keeps working unchanged.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function CreatorsTab({ creators, products: _products }: { creators: Creator[]; products: Product[] }) {
+function CreatorsTab({ creators, products: _products, creatorRewards: _creatorRewards, productRequests: _productRequests, violations: _violations }: {
+  creators: Creator[]
+  products: Product[]
+  creatorRewards: CreatorRewardRow[]
+  productRequests: ProductRequestRow[]
+  violations: ViolationRow[]
+}) {
   const [editingGMV, setEditingGMV] = useState<{ id: string; value: string } | null>(null)
   const [editingGoal, setEditingGoal] = useState<{ id: string; value: string } | null>(null)
   const [expandedElite, setExpandedElite] = useState<string | null>(null)
@@ -1828,7 +1840,243 @@ function RewardsTab({ rewards, creatorRewards }: { rewards: RewardRow[]; creator
   )
 }
 
+// ── Papaya Picks Admin Tab ────────────────────────────────────────────────────
+const PICK_LEVELS: CreatorLevel[] = ['Initiation', 'Rising', 'Pro', 'Elite']
+const EMPTY_PICK = {
+  product_name: '',
+  brand_name: '',
+  niche: '',
+  commission_rate: '' as number | '',
+  product_link: '',
+  sample_link: '',
+  product_image_url: '',
+  units_sold_this_week: 0,
+  growth_percentage: 0,
+  affiliates_count: 0,
+  videos_count: 0,
+  why_its_a_pick: '',
+  example_video_url: '',
+  min_level: 'Rising' as CreatorLevel,
+  is_active: true,
+  expires_at: '',
+}
+
+function PapayaPicksAdminTab({ picks }: { picks: PapayaPick[] }) {
+  const [isPending, startTransition] = useTransition()
+  const [feedback, setFeedback] = useState<string | null>(null)
+  const [showAdd, setShowAdd] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState(EMPTY_PICK)
+
+  function fb(msg: string) { setFeedback(msg); setTimeout(() => setFeedback(null), 4000) }
+
+  function resetForm() {
+    setForm(EMPTY_PICK)
+    setShowAdd(false)
+    setEditingId(null)
+  }
+
+  function startEdit(p: PapayaPick) {
+    setEditingId(p.id)
+    setShowAdd(true)
+    setForm({
+      product_name: p.product_name,
+      brand_name: p.brand_name ?? '',
+      niche: p.niche ?? '',
+      commission_rate: p.commission_rate ?? '',
+      product_link: p.product_link ?? '',
+      sample_link: p.sample_link ?? '',
+      product_image_url: p.product_image_url ?? '',
+      units_sold_this_week: p.units_sold_this_week,
+      growth_percentage: p.growth_percentage,
+      affiliates_count: p.affiliates_count,
+      videos_count: p.videos_count,
+      why_its_a_pick: p.why_its_a_pick ?? '',
+      example_video_url: p.example_video_url ?? '',
+      min_level: p.min_level,
+      is_active: p.is_active,
+      expires_at: p.expires_at ? p.expires_at.slice(0, 10) : '',
+    })
+  }
+
+  async function handleImageUpload(file: File) {
+    try {
+      const url = await uploadToStorage('product-images', file)
+      setForm((f) => ({ ...f, product_image_url: url }))
+      fb('Bild hochgeladen')
+    } catch (e) {
+      fb(`Fehler: ${(e as Error).message}`)
+    }
+  }
+
+  function submit() {
+    const payload = {
+      product_name: form.product_name.trim(),
+      brand_name: form.brand_name.trim() || null,
+      niche: form.niche.trim() || null,
+      commission_rate: form.commission_rate === '' ? null : Number(form.commission_rate),
+      product_link: form.product_link.trim() || null,
+      sample_link: form.sample_link.trim() || null,
+      product_image_url: form.product_image_url.trim() || null,
+      units_sold_this_week: Number(form.units_sold_this_week) || 0,
+      growth_percentage: Number(form.growth_percentage) || 0,
+      affiliates_count: Number(form.affiliates_count) || 0,
+      videos_count: Number(form.videos_count) || 0,
+      why_its_a_pick: form.why_its_a_pick.trim() || null,
+      example_video_url: form.example_video_url.trim() || null,
+      min_level: form.min_level,
+      is_active: form.is_active,
+      expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
+    }
+    startTransition(async () => {
+      const r = editingId ? await updatePapayaPick(editingId, payload) : await addPapayaPick(payload)
+      if (r.error) fb(`Fehler: ${r.error}`)
+      else { fb(editingId ? 'Pick aktualisiert' : 'Pick erstellt'); resetForm() }
+    })
+  }
+
+  const activeCount = picks.filter((p) => p.is_active).length
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="font-dm-sans font-bold text-lg text-brand-black">Papaya Picks</h3>
+          <p className="font-dm-sans text-xs text-gray-500">{activeCount} aktiv · {picks.length} gesamt</p>
+        </div>
+        <button
+          onClick={() => (showAdd ? resetForm() : setShowAdd(true))}
+          className="font-dm-sans text-sm font-semibold bg-brand-green text-white px-4 py-2 rounded-xl hover:bg-brand-green/90 transition"
+        >
+          {showAdd ? 'Abbrechen' : '+ Neuer Pick'}
+        </button>
+      </div>
+
+      <Feedback msg={feedback} />
+
+      {showAdd && (
+        <div className="bg-brand-light-pink border border-brand-pink/20 rounded-2xl p-5 mb-5">
+          <h4 className="font-dm-sans font-semibold text-sm text-brand-black mb-3">
+            {editingId ? 'Pick bearbeiten' : 'Neuer Pick'}
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input placeholder="Produktname *" value={form.product_name} onChange={(e) => setForm((f) => ({ ...f, product_name: e.target.value }))} className="input-field" />
+            <input placeholder="Marke" value={form.brand_name} onChange={(e) => setForm((f) => ({ ...f, brand_name: e.target.value }))} className="input-field" />
+            <input placeholder="Nische (z.B. Beauty, Haushalt)" value={form.niche} onChange={(e) => setForm((f) => ({ ...f, niche: e.target.value }))} className="input-field" />
+            <input type="number" step="0.1" placeholder="Provision %" value={form.commission_rate} onChange={(e) => setForm((f) => ({ ...f, commission_rate: e.target.value === '' ? '' : Number(e.target.value) }))} className="input-field" />
+            <input placeholder="Produkt-Link" value={form.product_link} onChange={(e) => setForm((f) => ({ ...f, product_link: e.target.value }))} className="input-field sm:col-span-2" />
+            <input placeholder="Sample-Link" value={form.sample_link} onChange={(e) => setForm((f) => ({ ...f, sample_link: e.target.value }))} className="input-field sm:col-span-2" />
+
+            <div className="sm:col-span-2 flex items-center gap-3">
+              {form.product_image_url && (
+                <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={form.product_image_url} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+              <label className="font-dm-sans text-sm text-gray-600 cursor-pointer">
+                <span className="underline">Bild hochladen</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f) }}
+                />
+              </label>
+            </div>
+
+            <input type="number" placeholder="Verkäufe diese Woche" value={form.units_sold_this_week} onChange={(e) => setForm((f) => ({ ...f, units_sold_this_week: Number(e.target.value) }))} className="input-field" />
+            <input type="number" step="0.1" placeholder="Wachstum %" value={form.growth_percentage} onChange={(e) => setForm((f) => ({ ...f, growth_percentage: Number(e.target.value) }))} className="input-field" />
+            <input type="number" placeholder="Affiliates aktuell" value={form.affiliates_count} onChange={(e) => setForm((f) => ({ ...f, affiliates_count: Number(e.target.value) }))} className="input-field" />
+            <input type="number" placeholder="Videos im Markt" value={form.videos_count} onChange={(e) => setForm((f) => ({ ...f, videos_count: Number(e.target.value) }))} className="input-field" />
+
+            <textarea placeholder="Warum ist das ein Pick?" value={form.why_its_a_pick} onChange={(e) => setForm((f) => ({ ...f, why_its_a_pick: e.target.value }))} className="input-field sm:col-span-2 resize-none" rows={2} />
+            <input placeholder="Beispielvideo-URL" value={form.example_video_url} onChange={(e) => setForm((f) => ({ ...f, example_video_url: e.target.value }))} className="input-field sm:col-span-2" />
+
+            <select value={form.min_level} onChange={(e) => setForm((f) => ({ ...f, min_level: e.target.value as CreatorLevel }))} className="input-field">
+              {PICK_LEVELS.map((l) => <option key={l} value={l}>Min: {l}</option>)}
+            </select>
+            <input type="date" value={form.expires_at} onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))} className="input-field" />
+
+            <label className="flex items-center gap-2 font-dm-sans text-sm text-gray-600 sm:col-span-2">
+              <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />
+              Aktiv (sichtbar für Creators)
+            </label>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button
+              disabled={isPending || !form.product_name.trim()}
+              onClick={submit}
+              className="font-dm-sans text-sm font-semibold bg-brand-green text-white px-5 py-2.5 rounded-xl hover:bg-brand-green/90 transition disabled:opacity-50"
+            >
+              {isPending ? 'Speichern...' : editingId ? 'Speichern' : 'Erstellen'}
+            </button>
+            <button onClick={resetForm} className="font-dm-sans text-sm font-medium text-gray-500 px-4 py-2.5 rounded-xl hover:bg-gray-100 transition">
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {picks.length === 0 && <p className="font-dm-sans text-sm text-gray-400 py-8 text-center">Noch keine Picks. Erstelle den ersten oben.</p>}
+        {picks.map((p) => (
+          <div key={p.id} className={`bg-white border rounded-2xl p-4 flex items-start gap-4 ${p.is_active ? 'border-gray-100' : 'border-gray-100 opacity-60'}`}>
+            <div className="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden shrink-0">
+              {p.product_image_url && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={p.product_image_url} alt="" className="w-full h-full object-cover" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <h4 className="font-dm-sans font-semibold text-sm text-brand-black truncate">{p.product_name}</h4>
+                {p.brand_name && <span className="font-dm-sans text-xs text-gray-500">· {p.brand_name}</span>}
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                  Score {Math.round(p.papaya_pick_score ?? 0)}
+                </span>
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Min: {p.min_level}</span>
+                {!p.is_active && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Inaktiv</span>}
+              </div>
+              <p className="font-dm-sans text-xs text-gray-500">
+                {p.units_sold_this_week} verkauft · {p.growth_percentage}% Wachstum · {p.affiliates_count} Affiliates · {p.videos_count} Videos
+              </p>
+              {p.why_its_a_pick && <p className="font-dm-sans text-xs text-gray-600 mt-1 line-clamp-2">{p.why_its_a_pick}</p>}
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <button
+                disabled={isPending}
+                onClick={() => startTransition(async () => {
+                  await updatePapayaPick(p.id, { is_active: !p.is_active })
+                  fb(p.is_active ? 'Deaktiviert' : 'Aktiviert')
+                })}
+                className="text-xs text-gray-500 hover:text-brand-green px-2 py-1 rounded-lg hover:bg-gray-100 transition"
+              >
+                {p.is_active ? 'Deaktivieren' : 'Aktivieren'}
+              </button>
+              <button
+                onClick={() => startEdit(p)}
+                className="text-xs text-gray-500 hover:text-brand-black px-2 py-1 rounded-lg hover:bg-gray-100 transition"
+              >
+                Bearbeiten
+              </button>
+              <button
+                disabled={isPending}
+                onClick={() => { if (confirm('Pick löschen?')) startTransition(async () => { await deletePapayaPick(p.id); fb('Gelöscht') }) }}
+                className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition"
+              >
+                Löschen
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Violations Tab ────────────────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ViolationsTab({ violations }: { violations: ViolationRow[] }) {
   const [isPending, startTransition] = useTransition()
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -1907,25 +2155,28 @@ function ViolationsTab({ violations }: { violations: ViolationRow[] }) {
 }
 
 // ── Main Admin Panel ──────────────────────────────────────────────────────────
-type Tab = 'creators' | 'announcements' | 'applications' | 'requests' | 'campaigns' | 'products' | 'strategy' | 'initiation' | 'levels' | 'rewards' | 'settings' | 'violations'
+// Top-level admin tabs collapsed from 12 → 7 (German labels). Mirrors
+// the USA restructure: standalone Strategy / Violations now live inside
+// each creator's profile; Applications merged into Kampagnen; Requests
+// + Initiation merged into Produkte; Levels + Rewards merged. The four
+// component bodies for the standalone tabs (ApplicationsTab, RequestsTab,
+// etc.) are still mounted — they just live below the merged section
+// headers now.
+type Tab = 'creators' | 'campaigns-applications' | 'products-requests' | 'announcements' | 'levels-rewards' | 'settings'
 
-export default function AdminPanel({ creators, products, campaigns, applications, productRequests, initiationSelections, announcements, levels, rewards, creatorRewards, settings, violations }: AdminPanelProps) {
+export default function AdminPanel({ creators, products, campaigns, applications, productRequests, initiationSelections, announcements, levels, rewards, creatorRewards, settings, violations, papayaPicks }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>('creators')
   const [isPending, startTransition] = useTransition()
 
+  const pendingRequestsCount = productRequests.filter((r) => r.status === 'pending').length
+  const pendingApplicationsCount = applications.length
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: 'creators', label: 'Creators', count: creators.length },
-    { id: 'announcements', label: 'Announcements', count: announcements.filter((a) => a.is_active).length },
-    { id: 'applications', label: 'Applications', count: applications.length },
-    { id: 'requests', label: 'Requests', count: productRequests.filter((r) => r.status === 'pending').length },
-    { id: 'campaigns', label: 'Campaigns', count: campaigns.length },
-    { id: 'products', label: 'Products', count: products.length },
-    { id: 'strategy', label: 'Strategy' },
-    { id: 'initiation', label: 'Initiation', count: initiationSelections.filter((s, i, arr) => arr.findIndex((x) => x.creator_id === s.creator_id) === i).length },
-    { id: 'levels', label: 'Levels' },
-    { id: 'rewards', label: 'Rewards', count: rewards.length },
-    { id: 'settings', label: 'Settings' },
-    { id: 'violations', label: 'Violations', count: violations.filter((v) => v.status === 'pending').length },
+    { id: 'campaigns-applications', label: 'Kampagnen & Bewerbungen', count: pendingApplicationsCount },
+    { id: 'products-requests', label: 'Produkte & Anfragen', count: pendingRequestsCount },
+    { id: 'announcements', label: 'Ankündigungen', count: announcements.filter((a) => a.is_active).length },
+    { id: 'levels-rewards', label: 'Level & Prämien', count: levels.length + rewards.length },
+    { id: 'settings', label: 'Einstellungen' },
   ]
 
   return (
@@ -1989,18 +2240,61 @@ export default function AdminPanel({ creators, products, campaigns, applications
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-2xl p-6 shadow-sm">
-          {activeTab === 'creators' && <CreatorsTab creators={creators} products={products} />}
+          {activeTab === 'creators' && (
+            <CreatorsTab
+              creators={creators}
+              products={products}
+              creatorRewards={creatorRewards}
+              productRequests={productRequests}
+              violations={violations}
+            />
+          )}
+          {activeTab === 'campaigns-applications' && (
+            <div className="space-y-8">
+              <CampaignsTab campaigns={campaigns} products={products} />
+              <div className="border-t border-gray-200 pt-8">
+                <h2 className="font-playfair text-2xl text-brand-black mb-4">Bewerbungen</h2>
+                <ApplicationsTab applications={applications} />
+              </div>
+              {/* Strategy editor reachable from here so admin doesn't lose
+                  access while the per-creator sub-tab rebuild lands. */}
+              <div className="border-t border-gray-200 pt-8">
+                <h2 className="font-playfair text-2xl text-brand-black mb-4">Strategie-Editor</h2>
+                <StrategyManager creators={creators} products={products} campaigns={campaigns} />
+              </div>
+            </div>
+          )}
+          {activeTab === 'products-requests' && (
+            <div className="space-y-8">
+              <ProductsTab products={products} />
+              <div className="border-t border-gray-200 pt-8">
+                <h2 className="font-playfair text-2xl text-brand-black mb-4">Produktanfragen</h2>
+                <RequestsTab productRequests={productRequests} />
+              </div>
+              <div className="border-t border-gray-200 pt-8">
+                <h2 className="font-playfair text-2xl text-brand-black mb-4">🌟 Papaya Picks</h2>
+                <PapayaPicksAdminTab picks={papayaPicks} />
+              </div>
+              <div className="border-t border-gray-200 pt-8">
+                <h2 className="font-playfair text-2xl text-brand-black mb-4">Initiation</h2>
+                <InitiationTab selections={initiationSelections} />
+              </div>
+            </div>
+          )}
           {activeTab === 'announcements' && <AnnouncementsTab announcements={announcements} />}
-          {activeTab === 'applications' && <ApplicationsTab applications={applications} />}
-          {activeTab === 'requests' && <RequestsTab productRequests={productRequests} />}
-          {activeTab === 'campaigns' && <CampaignsTab campaigns={campaigns} products={products} />}
-          {activeTab === 'products' && <ProductsTab products={products} />}
-          {activeTab === 'strategy' && <StrategyManager creators={creators} products={products} campaigns={campaigns} />}
-          {activeTab === 'initiation' && <InitiationTab selections={initiationSelections} />}
-          {activeTab === 'levels' && <LevelsTab levels={levels} />}
-          {activeTab === 'rewards' && <RewardsTab rewards={rewards} creatorRewards={creatorRewards} />}
+          {activeTab === 'levels-rewards' && (
+            <div className="space-y-8">
+              <LevelsTab levels={levels} />
+              <div className="border-t border-gray-200 pt-8">
+                <h2 className="font-playfair text-2xl text-brand-black mb-4">Prämien</h2>
+                <RewardsTab rewards={rewards} creatorRewards={creatorRewards} />
+              </div>
+            </div>
+          )}
           {activeTab === 'settings' && <SettingsTab settings={settings} />}
-          {activeTab === 'violations' && <ViolationsTab violations={violations} />}
+          {/* Strategy + Violations standalone tabs removed — both surface
+              inside the creator profile now (CreatorsTab sub-tabs). The
+              component bodies stay in this file for reuse. */}
         </div>
       </div>
     </div>

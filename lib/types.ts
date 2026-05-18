@@ -204,6 +204,28 @@ export interface CreatorRewardRow {
   address_data: Record<string, string> | null
 }
 
+export interface PapayaPick {
+  id: string
+  product_name: string
+  brand_name: string | null
+  niche: string | null
+  commission_rate: number | null
+  product_link: string | null
+  sample_link: string | null
+  product_image_url: string | null
+  units_sold_this_week: number
+  growth_percentage: number
+  affiliates_count: number
+  videos_count: number
+  papaya_pick_score: number
+  why_its_a_pick: string | null
+  example_video_url: string | null
+  min_level: CreatorLevel
+  is_active: boolean
+  expires_at: string | null
+  created_at: string
+}
+
 export const LEVEL_CONFIG: Record<CreatorLevel, { min: number; max: number; target: number | null; color: string; next: CreatorLevel | null }> = {
   Initiation: { min: 0, max: 299, target: 300, color: '#9CA3AF', next: 'Rising' },
   Rising:     { min: 300, max: 999, target: 1000, color: '#F4A7C3', next: 'Pro' },
