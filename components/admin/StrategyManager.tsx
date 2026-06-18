@@ -32,6 +32,10 @@ async function uploadToStorage(bucket: string, file: File): Promise<string> {
 function emptyProduct(): StrategyProductInput {
   return {
     product_id: '',
+    is_external: false,
+    external_product_name: '',
+    external_brand: '',
+    external_commission: null,
     priority: 'Secondary',
     videos_per_day: null,
     live_hours_per_week: null,
@@ -87,6 +91,10 @@ export default function StrategyManager({ creators, products, campaigns }: Strat
       type RawProduct = Record<string, unknown> & { videos?: Record<string, unknown>[] }
       const loaded: StrategyProductInput[] = result.data.products.map((p: RawProduct) => ({
         product_id: (p.product_id as string) ?? '',
+        is_external: (p.is_external as boolean) ?? false,
+        external_product_name: (p.external_product_name as string) ?? '',
+        external_brand: (p.external_brand as string) ?? '',
+        external_commission: (p.external_commission as number | null) ?? null,
         priority: (p.priority as string) ?? 'Secondary',
         videos_per_day: p.videos_per_day as number | null,
         live_hours_per_week: p.live_hours_per_week as number | null,
@@ -183,6 +191,17 @@ export default function StrategyManager({ creators, products, campaigns }: Strat
   function handleSave() {
     if (!creatorId) { fb('Error: Select a creator.'); return }
     if (!month) { fb('Error: Select a month.'); return }
+    // Validate each row before saving: catalog product or external with name.
+    for (let i = 0; i < strategyProducts.length; i++) {
+      const p = strategyProducts[i]
+      if (p.is_external) {
+        if (!p.external_product_name.trim()) {
+          fb(`Error: Produkt ${i + 1}: Externes Produkt braucht einen Produktnamen.`); return
+        }
+      } else if (!p.product_id) {
+        fb(`Error: Produkt ${i + 1}: Bitte ein Katalogprodukt auswählen oder auf Extern umstellen.`); return
+      }
+    }
     startTransition(async () => {
       const monthDate = `${month}-01`
       const result = await saveStrategy({
@@ -272,8 +291,54 @@ export default function StrategyManager({ creators, products, campaigns }: Strat
               {/* Product searchable picker */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-dm-sans text-xs font-medium text-gray-500 mb-1">Product</label>
-                  {sp.product_id ? (
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-dm-sans text-xs font-medium text-gray-500">Product</label>
+                    <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => updateProduct(pi, { is_external: false })}
+                        className={`text-xs font-semibold px-2.5 py-1 transition ${!sp.is_external ? 'bg-brand-black text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`}
+                      >
+                        Katalog
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateProduct(pi, { is_external: true })}
+                        className={`text-xs font-semibold px-2.5 py-1 transition ${sp.is_external ? 'bg-brand-black text-white' : 'bg-white text-gray-400 hover:text-gray-600'}`}
+                      >
+                        Extern
+                      </button>
+                    </div>
+                  </div>
+                  {sp.is_external ? (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={sp.external_product_name}
+                        onChange={(e) => updateProduct(pi, { external_product_name: e.target.value })}
+                        placeholder="Produktname (Pflichtfeld)"
+                        className="input-field w-full"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={sp.external_brand}
+                          onChange={(e) => updateProduct(pi, { external_brand: e.target.value })}
+                          placeholder="Marke (optional)"
+                          className="input-field w-full"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={sp.external_commission ?? ''}
+                          onChange={(e) => updateProduct(pi, { external_commission: e.target.value ? parseFloat(e.target.value) : null })}
+                          placeholder="Provision % (optional)"
+                          className="input-field w-full"
+                        />
+                      </div>
+                    </div>
+                  ) : sp.product_id ? (
                     <div className="flex items-center gap-2 input-field bg-brand-light-pink/40">
                       <span className="font-dm-sans text-sm text-brand-black flex-1 truncate">
                         {products.find((p) => p.id === sp.product_id)?.name ?? sp.product_id}

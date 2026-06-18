@@ -448,6 +448,10 @@ export interface VideoInput {
 
 export interface StrategyProductInput {
   product_id: string
+  is_external: boolean
+  external_product_name: string
+  external_brand: string
+  external_commission: number | null
   priority: string
   videos_per_day: number | null
   live_hours_per_week: number | null
@@ -477,14 +481,33 @@ export async function saveStrategy(data: {
 
   if (stratError) return { error: stratError.message }
 
+  // Validate every row BEFORE deleting existing products, so a bad row can't
+  // leave the strategy empty: each must be either a catalog product (product_id)
+  // or an external product with a name.
+  for (let i = 0; i < data.products.length; i++) {
+    const p = data.products[i]
+    if (p.is_external) {
+      if (!p.external_product_name.trim()) {
+        return { error: `Produkt ${i + 1}: Externes Produkt braucht einen Produktnamen.` }
+      }
+    } else if (!p.product_id) {
+      return { error: `Produkt ${i + 1}: Bitte ein Katalogprodukt auswählen oder auf Extern umstellen.` }
+    }
+  }
+
   await supabase.from('strategy_products').delete().eq('strategy_id', strategy.id)
 
   for (const p of data.products) {
+    const isExternal = p.is_external
     const { data: sp, error: spError } = await supabase
       .from('strategy_products')
       .insert({
         strategy_id: strategy.id,
-        product_id: p.product_id || null,
+        product_id: isExternal ? null : (p.product_id || null),
+        is_external: isExternal,
+        external_product_name: isExternal ? p.external_product_name.trim() : null,
+        external_brand: isExternal ? (p.external_brand.trim() || null) : null,
+        external_commission: isExternal ? p.external_commission : null,
         priority: p.priority,
         videos_per_day: p.videos_per_day,
         live_hours_per_week: p.live_hours_per_week,

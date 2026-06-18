@@ -93,6 +93,10 @@ export interface StrategyProduct {
   id: string
   strategy_id: string
   product_id: string | null
+  is_external: boolean
+  external_product_name: string | null
+  external_brand: string | null
+  external_commission: number | null
   priority: StrategyPriority
   videos_per_day: number | null
   live_hours_per_week: number | null

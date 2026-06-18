@@ -110,7 +110,13 @@ export default async function StrategyPage() {
     }
   }
 
-  const hasChecklist = strategyProducts.some(
+  // Only show rows that actually carry data: a catalog product (joined) or an
+  // external product with a name. This avoids the broken "?" placeholder card.
+  const visibleProducts = strategyProducts.filter((sp) =>
+    sp.is_external ? !!sp.external_product_name : !!sp.product
+  )
+
+  const hasChecklist = visibleProducts.some(
     (sp) => (sp.videos_per_day ?? 0) > 0 || (sp.live_hours_per_week ?? 0) > 0
   )
 
@@ -138,9 +144,11 @@ export default async function StrategyPage() {
           <div className="mb-8">
             <DailyChecklist
               creatorId={creator.id}
-              strategyProducts={strategyProducts.map((sp) => ({
+              strategyProducts={visibleProducts.map((sp) => ({
                 id: sp.id,
-                product: sp.product as { name: string } | null,
+                product: sp.is_external
+                  ? { name: sp.external_product_name ?? 'Externes Produkt' }
+                  : (sp.product as { name: string } | null),
                 videos_per_day: sp.videos_per_day,
                 live_hours_per_week: sp.live_hours_per_week,
               }))}
@@ -150,7 +158,7 @@ export default async function StrategyPage() {
         )}
 
         {/* No strategy yet */}
-        {(!strategyId || strategyProducts.length === 0) ? (
+        {(!strategyId || visibleProducts.length === 0) ? (
           <div className="bg-white rounded-2xl border border-brand-pink/20 p-10 text-center">
             <p className="text-4xl mb-3">📋</p>
             <h2 className="font-playfair text-2xl text-brand-black mb-2">
@@ -162,43 +170,59 @@ export default async function StrategyPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {strategyProducts.map((sp) => {
+            {visibleProducts.map((sp) => {
               const priorityStyle = PRIORITY_STYLES[sp.priority] ?? PRIORITY_STYLES.Supporting
               const product = sp.product as { name: string; niche: string | null; commission_rate: number | null; image_url: string | null } | null
               const campaign = sp.campaign as { brand_name: string } | null
+
+              // Unify catalog vs external for display.
+              const isExternal = sp.is_external
+              const displayName = isExternal ? sp.external_product_name : product?.name
+              const displayImage = isExternal ? null : product?.image_url
+              const displayNiche = isExternal ? null : product?.niche
+              const displayCommission = isExternal ? sp.external_commission : product?.commission_rate
+              const displayBrand = isExternal ? sp.external_brand : null
 
               return (
                 <div key={sp.id} className="bg-white rounded-2xl border border-brand-pink/20 shadow-sm overflow-hidden">
                   {/* Product header */}
                   <div className="px-6 py-5 border-b border-gray-50 flex items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      {product?.image_url ? (
+                      {displayImage ? (
                         <img
-                          src={product.image_url}
-                          alt={product?.name}
+                          src={displayImage}
+                          alt={displayName ?? 'Product'}
                           className="w-14 h-14 object-cover rounded-xl border border-gray-100 shrink-0"
                         />
                       ) : (
                         <div className="w-14 h-14 rounded-xl bg-brand-light-pink flex items-center justify-center shrink-0">
                           <span className="font-playfair text-2xl text-brand-pink">
-                            {product?.name?.charAt(0) ?? '?'}
+                            {displayName?.charAt(0) ?? '?'}
                           </span>
                         </div>
                       )}
                       <div>
                         <h2 className="font-playfair text-xl text-brand-black leading-tight">
-                          {product?.name ?? 'Product'}
+                          {displayName ?? 'Product'}
                         </h2>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {product?.niche && (
+                          {displayBrand && (
                             <span className="font-dm-sans text-xs bg-brand-light-pink text-brand-green px-2 py-0.5 rounded-full">
-                              {product.niche}
+                              {displayBrand}
                             </span>
                           )}
-                          {product?.commission_rate != null && (
-                            <span className="font-dm-sans text-xs font-bold text-brand-pink">
-                              {product.commission_rate}% Provision
+                          {displayNiche && (
+                            <span className="font-dm-sans text-xs bg-brand-light-pink text-brand-green px-2 py-0.5 rounded-full">
+                              {displayNiche}
                             </span>
+                          )}
+                          {displayCommission != null && (
+                            <span className="font-dm-sans text-xs font-bold text-brand-pink">
+                              {displayCommission}% Provision
+                            </span>
+                          )}
+                          {isExternal && (
+                            <span className="font-dm-sans text-xs text-gray-400">Extern</span>
                           )}
                         </div>
                       </div>
