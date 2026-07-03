@@ -479,11 +479,11 @@ export async function saveStrategy(data: {
     .select('id')
     .single()
 
-  if (stratError) return { error: stratError.message }
+  if (stratError || !strategy) return { error: stratError?.message ?? 'strategies.upsert failed' }
 
-  // Validate every row BEFORE deleting existing products, so a bad row can't
-  // leave the strategy empty: each must be either a catalog product (product_id)
-  // or an external product with a name.
+  // Validate every row BEFORE building the payload, so a bad row can't
+  // leave the strategy empty: each must be either a catalog product
+  // (product_id) or an external product with a name.
   for (let i = 0; i < data.products.length; i++) {
     const p = data.products[i]
     if (p.is_external) {
@@ -495,49 +495,92 @@ export async function saveStrategy(data: {
     }
   }
 
-  await supabase.from('strategy_products').delete().eq('strategy_id', strategy.id)
-
-  for (const p of data.products) {
+  // Build the full insert payload BEFORE deleting anything. Alemania has no
+  // weekly model, so the whole strategy (creator_id + month) is replaced as
+  // a unit — we delete/insert per strategy_id.
+  const rows = data.products.map((p) => {
     const isExternal = p.is_external
-    const { data: sp, error: spError } = await supabase
-      .from('strategy_products')
-      .insert({
-        strategy_id: strategy.id,
-        product_id: isExternal ? null : (p.product_id || null),
-        is_external: isExternal,
-        external_product_name: isExternal ? p.external_product_name.trim() : null,
-        external_brand: isExternal ? (p.external_brand.trim() || null) : null,
-        external_commission: isExternal ? p.external_commission : null,
-        priority: p.priority,
-        videos_per_day: p.videos_per_day,
-        live_hours_per_week: p.live_hours_per_week,
-        gmv_target: p.gmv_target,
-        strategy_note: p.strategy_note,
-        hashtags: p.hashtags,
-        is_retainer: p.is_retainer,
-        campaign_id: p.campaign_id || null,
-        video_focus: p.video_focus || null,
-        quick_checklist: p.quick_checklist ?? [],
-        brief_url: p.brief_url || null,
-      })
-      .select('id')
-      .single()
-
-    if (spError) return { error: spError.message }
-
-    if (p.videos.length > 0) {
-      const videos = p.videos
-        .filter((v) => v.video_url.trim())
-        .map((v) => ({
-          strategy_product_id: sp.id,
-          video_url: v.video_url,
-          thumbnail_url: v.thumbnail_url || null,
-        }))
-      if (videos.length > 0) {
-        const { error: vError } = await supabase.from('strategy_videos').insert(videos)
-        if (vError) return { error: vError.message }
-      }
+    return {
+      strategy_id: strategy.id,
+      product_id: isExternal ? null : (p.product_id || null),
+      is_external: isExternal,
+      external_product_name: isExternal ? p.external_product_name.trim() : null,
+      external_brand: isExternal ? (p.external_brand.trim() || null) : null,
+      external_commission: isExternal ? p.external_commission : null,
+      priority: p.priority,
+      videos_per_day: p.videos_per_day,
+      live_hours_per_week: p.live_hours_per_week,
+      gmv_target: p.gmv_target,
+      strategy_note: p.strategy_note,
+      hashtags: p.hashtags,
+      is_retainer: p.is_retainer,
+      campaign_id: p.campaign_id || null,
+      video_focus: p.video_focus || null,
+      quick_checklist: p.quick_checklist ?? [],
+      brief_url: p.brief_url || null,
     }
+  })
+
+  // GUARD (data-loss fix): if the payload is empty, refuse to touch the
+  // existing rows. An empty save must NEVER wipe the strategy and report
+  // success — that was the "products disappear" bug.
+  if (rows.length === 0) {
+    return {
+      error:
+        'Nicht gespeichert: Die Strategie enthält keine gültigen Produkte. Bitte füge mindestens ein Katalog- oder externes Produkt hinzu.',
+    }
+  }
+
+  // Capture the IDs of the rows we're about to replace. We delete these
+  // AFTER a successful insert, so a failed insert can never leave the
+  // strategy wiped.
+  const { data: existing, error: exErr } = await supabase
+    .from('strategy_products')
+    .select('id')
+    .eq('strategy_id', strategy.id)
+  if (exErr) return { error: exErr.message }
+  const oldIds = (existing ?? []).map((r) => r.id as string)
+
+  // Insert the new rows FIRST (single batch). If any row fails a constraint
+  // we get one error and — because the old rows are still in place — the
+  // strategy stays intact instead of wiped.
+  const { data: inserted, error: insError } = await supabase
+    .from('strategy_products')
+    .insert(rows)
+    .select('id')
+
+  if (insError) return { error: insError.message }
+  if (!inserted || inserted.length !== rows.length) {
+    return { error: `inserted ${inserted?.length ?? 0} rows but expected ${rows.length}` }
+  }
+
+  // Insert confirmed — now remove the old rows by id. Their videos go with
+  // them via strategy_videos' on-delete cascade.
+  if (oldIds.length > 0) {
+    const { error: delError } = await supabase
+      .from('strategy_products')
+      .delete()
+      .in('id', oldIds)
+    if (delError) return { error: delError.message }
+  }
+
+  // Attach each inserted product's videos. supabase-js preserves payload
+  // order, so inserted[i] is the row we built from data.products[i].
+  const videoPayload: Array<{ strategy_product_id: string; video_url: string; thumbnail_url: string | null }> = []
+  data.products.forEach((p, i) => {
+    for (const v of p.videos) {
+      const url = v.video_url.trim()
+      if (!url) continue
+      videoPayload.push({
+        strategy_product_id: inserted[i].id,
+        video_url: url,
+        thumbnail_url: v.thumbnail_url || null,
+      })
+    }
+  })
+  if (videoPayload.length > 0) {
+    const { error: vError } = await supabase.from('strategy_videos').insert(videoPayload)
+    if (vError) return { error: vError.message }
   }
 
   revalidatePath('/admin')
